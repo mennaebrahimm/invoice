@@ -335,7 +335,10 @@ namespace invoice
             // Health check endpoint
             app.UseHealthChecks("/health");
 
-           app.MapWhen(context => context.Request.Path.StartsWithSegments("/api/external"),
+          //  app.UseRouting();
+            // External API key middleware ONLY for routes starting with /api/externa
+
+            app.UseWhen(context => context.Request.Path.StartsWithSegments("/api/external"),
                 appBuilder =>
                 {
                     appBuilder.UseMiddleware<ApiKeyMiddleware>();

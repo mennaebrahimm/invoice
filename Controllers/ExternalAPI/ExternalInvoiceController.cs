@@ -1,9 +1,13 @@
 ﻿using invoice.Core.DTO.Invoice;
 using invoice.Core.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace invoice.Controllers.ExternalAPI
 {
+    [AllowAnonymous]
+    [ApiController]
+    [Route("api/external/[controller]")]
     public class ExternalInvoiceController : ControllerBase
     {
         private readonly IInvoiceService _invoiceService;
@@ -12,13 +16,15 @@ namespace invoice.Controllers.ExternalAPI
         {
             _invoiceService = invoiceService;
         }
-        private string GetExternalUserId => HttpContext.Items["ExternalUserId"]?.ToString();
+        private string GetExternalUserId() => HttpContext.Items["ExternalUserId"]?.ToString();
 
+
+        
         [HttpPost]
         public async Task<IActionResult> ExternalCreate([FromBody] InvoiceCreateDTO dto)
         {
 
-            var userId = GetExternalUserId;
+            var userId = GetExternalUserId();
 
             if (userId == null)
                 return Unauthorized("API key required");

@@ -8,6 +8,7 @@ namespace invoice.Core.DTO.Auth
         public string Email { get; set; }
         public string UserName { get; set; }
         public string phoneNum { get; set; }
+        public string ApiKey { get; set; }
         public string? TabAccountId { get; set; }
 
         public string Token { get; set; }

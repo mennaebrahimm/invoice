@@ -96,6 +96,7 @@ namespace invoice.Services
                     Email = user.Email,
                     UserName = user.UserName,
                     phoneNum = user.PhoneNumber,
+                    ApiKey = user.ApiKey,
                     TabAccountId = user.TabAccountId
 
                 }
