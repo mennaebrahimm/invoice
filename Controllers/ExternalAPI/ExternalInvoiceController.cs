@@ -35,7 +35,26 @@ namespace invoice.Controllers.ExternalAPI
 
 
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(string id)
+        {
+            var response = await _invoiceService.GetByIdAsync(id, GetExternalUserId());
+            return Ok(response);
+        }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(string id, [FromBody] InvoiceUpdateDTO dto)
+        {
+            var response = await _invoiceService.UpdateAsync(id, dto, GetExternalUserId());
+            return Ok(response);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var response = await _invoiceService.DeleteAsync(id, GetExternalUserId());
+            return Ok(response);
+        }
 
     }
 }

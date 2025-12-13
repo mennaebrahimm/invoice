@@ -5,6 +5,7 @@ using invoice.Core.DTO.Tax;
 using invoice.Core.Interfaces.Services;
 using invoice.Repo;
 using invoice.Core.Entities;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace invoice.Services
@@ -54,41 +55,56 @@ namespace invoice.Services
 
         public async Task<GeneralResponse<TaxReadDTO>> UpdateAsync(TaxReadDTO dto, string userId)
         {
-            var tax = (await _taxRepo.GetSingleByUserIdAsync(userId));
+            if (dto == null || string.IsNullOrWhiteSpace(userId))
+                return new GeneralResponse<TaxReadDTO>(false, "Invalid tax data");
+
+            var tax = await _taxRepo.GetSingleByUserIdAsync(userId);
             if (tax == null)
-                return new GeneralResponse<TaxReadDTO>(false, "tax not found");
+                return new GeneralResponse<TaxReadDTO>(false, "Tax not found");
+
+            var strategy = _taxRepo.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync<object, GeneralResponse<TaxReadDTO>>(
+            state: null,
+
+            operation: async (context, state, cancellationToken) =>
+            {
+
+              var transaction = await _taxRepo.BeginTransactionAsync();
+
+                    try
+                    {
+                        await _taxRepo.DeleteAsync(tax.Id);
+
+                        var newTax = _mapper.Map<Tax>(dto);
+                        newTax.UserId = userId;
+
+                        await _taxRepo.AddAsync(newTax);
+
+                        await _taxRepo.CommitTransactionAsync(transaction);
+
+                        return new GeneralResponse<TaxReadDTO>(
+                            true,
+                            "Tax updated successfully",
+                            _mapper.Map<TaxReadDTO>(newTax)
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        await _taxRepo.RollbackTransactionAsync(transaction);
+
+                        return new GeneralResponse<TaxReadDTO>(
+                            false,
+                            "Error updating tax: " + ex.Message
+                        );
+                    }
+                },
+
+                verifySucceeded: null,
+                cancellationToken: CancellationToken.None
+            );
+        }
 
 
-            var NewTax = _mapper.Map<Tax>(dto);
-            NewTax.UserId = userId;
-
-          
-                //var strategy = _taxRepo.CreateExecutionStrategy();
-                //return await strategy.ExecuteAsync(async () =>
-                //{
-
-                    var transaction = await _taxRepo.BeginTransactionAsync();
-                try
-                {
-                    await _taxRepo.DeleteAsync(tax.Id);
-
-                    await _taxRepo.AddAsync(NewTax);
-
-                    await _taxRepo.CommitTransactionAsync(transaction);
-                }
-                catch (Exception ex)
-                {
-                    await _taxRepo.RollbackTransactionAsync(transaction);
-                    return new GeneralResponse<TaxReadDTO>(false, "Error updating tax: " + ex.Message);
-                }
-
-                var readDto = _mapper.Map<TaxReadDTO>(NewTax);
-                return new GeneralResponse<TaxReadDTO>(true, "Tax updated successfully", readDto);
-
-
-
-            }
-        //    );
-        //}
     }
 }

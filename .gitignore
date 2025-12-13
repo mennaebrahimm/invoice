@@ -58,7 +58,7 @@ Generated\ Files/
 TestResult.xml
 nunit-*.xml
 
-# Approval Tests result files
+# Approval Tests result files 
 *.received.*
 
 # Build Results of an ATL Project
@@ -72,7 +72,7 @@ BenchmarkDotNet.Artifacts/
 # .NET Core
 project.lock.json
 project.fragment.lock.json
-artifacts/
+artifacts/Æ
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
