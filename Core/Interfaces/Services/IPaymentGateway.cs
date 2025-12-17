@@ -13,6 +13,8 @@ namespace invoice.Core.Interfaces.Services
         Task<GeneralResponse<PaymentStatusResponse>> GetPaymentStatusAsync(string paymentId);
         Task<GeneralResponse<bool>> HandleWebhookAsync(WebhookPayloadDTO payload);
         Task<GeneralResponse<bool>> CancelPaymentAsync(string paymentId);
+        Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDto dto, string userId);
+        Task<string?> CreateAccountRetailerAsync(string leadId, string userId);
 
         Task<string?> CreateConnectUrlAsync(string leadId, string userId);
         Task<GeneralResponse<string>> CreateLeadAsync(CreateLeadDto dto, string userId);

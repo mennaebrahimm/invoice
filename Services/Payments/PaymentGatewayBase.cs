@@ -123,5 +123,15 @@ namespace invoice.Services.Payments
         {
             throw new NotImplementedException();
         }
+
+        public Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDto dto, string userId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string?> CreateAccountRetailerAsync(string leadId, string userId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

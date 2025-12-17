@@ -72,18 +72,16 @@ namespace invoice.Controllers
         [HttpPost("lead-to-connect")]
         public async Task<IActionResult> LeadToConnect([FromBody] CreateLeadDto dto)
         {
-            var leadResponse = await _paymentGateway.CreateLeadAsync(dto, GetUserId());
+            var leadResponse = await _paymentGateway.CreateLeadRetailerAsync(dto, GetUserId());
 
             if (!leadResponse.Success || string.IsNullOrEmpty(leadResponse.Data))
             {
                 return BadRequest("Failed to create lead: " + leadResponse.Message);
             }
 
-
-
             var leadId = leadResponse.Data;
 
-            var connectUrl = await _paymentGateway.CreateConnectUrlAsync(leadId, GetUserId());
+            var connectUrl = await _paymentGateway.CreateAccountRetailerAsync(leadId, GetUserId());
 
             if (connectUrl == null)
                 return BadRequest("Lead created, but failed to create connect URL");
@@ -150,7 +148,7 @@ namespace invoice.Controllers
 
         [AllowAnonymous]
         [HttpPost("createcharge-success")]
-        public async Task<IActionResult> CreateCharge([FromQuery] string userId, [FromQuery] string accountId, [FromQuery] string status)
+        public async Task<IActionResult> CompleteCharge([FromQuery] string userId, [FromQuery] string accountId, [FromQuery] string status)
         {
             if (string.IsNullOrEmpty(accountId))
                 return BadRequest("Missing account id");

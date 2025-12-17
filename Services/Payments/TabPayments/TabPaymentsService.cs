@@ -2,7 +2,6 @@
 using invoice.Core.DTO.Payment;
 using invoice.Core.DTO.PaymentResponse;
 using invoice.Core.DTO.PaymentResponse.TapPayments;
-using invoice.Core.DTO.Tax;
 using invoice.Core.Entities;
 using invoice.Core.Enums;
 using invoice.Core.Interfaces.Services;
@@ -13,8 +12,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Stripe;
+using Stripe.FinancialConnections;
 using Stripe.V2;
 using System;
+using System.Diagnostics.Metrics;
 using System.Net.Http.Headers;
 using System.Numerics;
 using System.Text;
@@ -70,7 +71,7 @@ namespace invoice.Services.Payments.TabPayments
 
         #region  Tap_Onboardin
 
-        public async Task<GeneralResponse<string>> CreateLeadAsync(CreateLeadDto dto, string userId)
+        public async Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDto dto, string userId)
         {
             if (dto == null)
             {
@@ -83,9 +84,31 @@ namespace invoice.Services.Payments.TabPayments
                 return new GeneralResponse<string>(false, "Invalid request: user already have account on tap payments", null);
 
             }
+            var body = new {
+                segment =new
+                {
+                    type= "BUSINESS",
+                    sub_segment =new {
+                        type= "RETAILER"
+
+                    }
+                },
+                country=dto.Country,
+                brand = dto.Brand,
+                entity = dto.Entity,
+                users = dto.Users,
+                wallet = dto.Wallet,
+                marketplace = new {
+                    id= "67989550"
+                },
+                post = new {
+                    url= ""
+                },
+
+            };
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("/v3/lead", dto);
+                var response = await _httpClient.PostAsJsonAsync("/v3/lead", body);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -111,41 +134,17 @@ namespace invoice.Services.Payments.TabPayments
                 );
             }
         }
-
-        public async Task<string?> CreateConnectUrlAsync(string leadId ,string userId)
+        public async Task<string?> CreateAccountRetailerAsync(string leadId, string userId)
         {
 
-            var dto = new CreateConnectDto
-            { 
-               
-                Lead = new LeadRefDto { Id = leadId },
-                Redirect = new RedirectDto { Url = "https://yourwebsite.com/success" },
-                Post = new PostDto { Url  = $"https://myinvoice.runasp.net/api/Payments/onboarding-success?userid={userId}",
-                
-                }
+            var body = new
+            {
+                lead_id = "leadId"
+
             };
-            //var dto = new
-            //{
-            //      scope = "merchant",
-            //    lead = new
-            //    {
-            //        id= leadId
-            //    },
+           
+            var response = await _httpClient.PostAsJsonAsync("/v3/connect/account", body);
 
-            //     post = new
-            //     {
-            //         url = "https://myinvoice.runasp.net/api/Payments/createcharge-success",
-
-            //     },
-
-            //    redirect = new
-            //    {
-            //        url = "https://myinvoice.runasp.net"
-            //    }
-            //};
-        
-            var response = await _httpClient.PostAsJsonAsync("/v3/connect", dto);
-          
 
             if (!response.IsSuccessStatusCode)
                 return null;
@@ -156,31 +155,48 @@ namespace invoice.Services.Payments.TabPayments
             return json.GetProperty("connect").GetProperty("url").GetString(); // connect_onboarding URL
         }
 
-
-
-        //public async Task<string?> CreateLeadAndConnectAsync()
+        //public async Task<string?> CreateConnectUrlAsync(string leadId ,string userId)
         //{
-        //    // 1) Create Lead
-        //    var leadId = await CreateLeadAsync(new CreateLeadDto
-        //    {
-        //        Users = new List<LeadUserDto>
-        //{
-        //    new LeadUserDto {
-        //        FullName = "Menna Testing",
-        //        Email = "menna@test.com",
-        //        PhoneCode = "+20",
-        //        PhoneNumber = "0100000000"
-        //    }
-        //}
-        //    });
 
-        //    if (leadId == null)
-        //        return "Failed to create lead";
+        //    var dto = new CreateConnectDto
+        //    { 
+               
+        //        Lead = new LeadRefDto { Id = leadId },
+        //        Redirect = new RedirectDto { Url = "https://yourwebsite.com/success" },
+        //        Post = new PostDto { Url  = $"https://myinvoice.runasp.net/api/Payments/onboarding-success?userid={userId}",
+                
+        //        }
+        //    };
+        //    //var dto = new
+        //    //{
+        //    //      scope = "merchant",
+        //    //    lead = new
+        //    //    {
+        //    //        id= leadId
+        //    //    },
 
-        //    // 2) Create Connect URL
-        //    var connectUrl = await CreateConnectUrlAsync(leadId);
+        //    //     post = new
+        //    //     {
+        //    //         url = "https://myinvoice.runasp.net/api/Payments/createcharge-success",
 
-        //    return connectUrl;
+        //    //     },
+
+        //    //    redirect = new
+        //    //    {
+        //    //        url = "https://myinvoice.runasp.net"
+        //    //    }
+        //    //};
+        
+        //    var response = await _httpClient.PostAsJsonAsync("/v3/connect", dto);
+          
+
+        //    if (!response.IsSuccessStatusCode)
+        //        return null;
+        //    //var raw = await response.Content.ReadAsStringAsync();
+        //    //Console.WriteLine("RAW TAP RESPONSE: " + raw);
+
+        //    var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        //    return json.GetProperty("connect").GetProperty("url").GetString(); // connect_onboarding URL
         //}
 
 
@@ -209,6 +225,14 @@ namespace invoice.Services.Payments.TabPayments
                 return new GeneralResponse<string>(false, "Invalid request: invalid invoice id", null);
 
             }
+            if (string.IsNullOrWhiteSpace(invoice.User.TabAccountId))
+            {
+                return new GeneralResponse<string>(
+                    false, "Merchant Tap account is not configured", null);
+            }
+
+            var commission = invoice.FinalValue * 0.05m; 
+            var merchantAmount = invoice.FinalValue - commission;
 
             var body = new
             {
@@ -222,6 +246,16 @@ namespace invoice.Services.Payments.TabPayments
                 {
                     invoiceid = invoice.Id
                 },
+               
+                destinations = new
+                { destination = new[] {
+                    new {
+                            id = invoice.User.TabAccountId, 
+                            amount = merchantAmount,
+                            currency = invoice.Currency
+                        }
+                    }
+                        },
                 receipt = new
                 {
                     email=true,
@@ -234,10 +268,10 @@ namespace invoice.Services.Payments.TabPayments
                     //phone = invoice.Client.PhoneNumber,
 
                 },
-                merchant = new
-                {
-                    id = invoice.User.TabAccountId
-                },
+                //merchant = new
+                //{
+                //    id = invoice.User.TabAccountId
+                //},
                 source = new
                 {
                     id = "src_all"
@@ -252,10 +286,7 @@ namespace invoice.Services.Payments.TabPayments
                 {
                     url = "https://myinvoice.runasp.net"
                 },
-                platform = new
-                {
-                    id = ""
-                }
+               
 
             };
 
