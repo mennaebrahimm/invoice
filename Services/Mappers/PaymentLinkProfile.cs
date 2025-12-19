@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using invoice.Core.DTO.Invoice;
 using invoice.Core.DTO.PaymentLink;
 using invoice.Core.DTO.Store;
 using invoice.Core.Entities;
@@ -46,6 +47,9 @@ namespace invoice.Services.Mappers
             ;
 
             CreateMap<CreatePaymentDTO, PaymentLinkPayments>();
+
+            CreateMap<PaymentLinkPayments, PaymentLinkPaymentsDTO>().ReverseMap();
+
 
 
         }

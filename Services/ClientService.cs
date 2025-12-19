@@ -144,7 +144,10 @@ namespace invoice.Services
 
         public async Task<GeneralResponse<bool>> DeleteAsync(string id, string userId)
         {
-            var transaction = await _clientRepo.BeginTransactionAsync();
+            var strategy = _clientRepo.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _clientRepo.BeginTransactionAsync();
 
             try
             {
@@ -166,9 +169,12 @@ namespace invoice.Services
             catch (Exception ex)
             {
                 await _clientRepo.RollbackTransactionAsync(transaction);
-                return new GeneralResponse<bool>(false, "Error deleting client: " + ex.Message, false);
+                    //return new GeneralResponse<bool>(false, "Error deleting client: " + ex.Message, false);
+                    throw;
             }
-        }
+            });
+        
+    }
 
 
         public async Task<GeneralResponse<bool>> DeleteRangeAsync(IEnumerable<string> ids, string userId)

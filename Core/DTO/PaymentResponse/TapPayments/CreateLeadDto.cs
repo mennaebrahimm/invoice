@@ -3,7 +3,7 @@
 namespace invoice.Core.DTO.PaymentResponse.TapPayments
 {
 
-    public class CreateLeadDto
+    public class CreateLeadDTO
     {
         public string Country { get; set; }
         public BrandDto Brand { get; set; }

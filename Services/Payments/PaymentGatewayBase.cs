@@ -114,22 +114,31 @@ namespace invoice.Services.Payments
             throw new NotImplementedException();
         }
 
-        public Task<GeneralResponse<string>> CreateLeadAsync(CreateLeadDto dto, string userId)
-        {
-            throw new NotImplementedException();
-        }
+    
 
         public Task<GeneralResponse<string>> CreatePaymentAsync(CreateChargeDTO dto)
         {
             throw new NotImplementedException();
         }
 
-        public Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDto dto, string userId)
+      
+
+        public Task<string?> CreateAccountRetailerAsync(string leadId, string userId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<string?> CreateAccountRetailerAsync(string leadId, string userId)
+        public Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDTO dto, string userId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<GeneralResponse<string>> CreateLeadAsync(CreateLeadDTO dto, string userId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<GeneralResponse<object>> WebhookAsync(PayoutWebhookDTO dto)
         {
             throw new NotImplementedException();
         }

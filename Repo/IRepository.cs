@@ -15,6 +15,7 @@ namespace invoice.Repo
         Task<T> GetBySlugAsync(string slug, Func<IQueryable<T>, IQueryable<T>> include = null);
         Task<IEnumerable<T>> QueryAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes);
         Task<IEnumerable<T>> QueryAsync(Expression<Func<T, bool>> predicate, Func<IQueryable<T>, IQueryable<T>> include = null);
+        Task<T?> GetSingleByPropertyAsync(Expression<Func<T, bool>> predicate, string? userId = null, Func<IQueryable<T>, IQueryable<T>> include = null);
 
         // ---------- Existence & Count ----------
         Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate);

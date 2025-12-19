@@ -54,11 +54,19 @@ namespace Repo
             if (include != null)
                 query = include(query);
 
-            if (!string.IsNullOrEmpty(userId) && typeof(T).GetProperty("UserId") != null)
+           
+            if (!string.IsNullOrEmpty(userId) &&
+                typeof(T).GetProperty("UserId") != null)
+            {
                 query = query.Where(e =>
-                    EF.Property<string>(e, "UserId") == userId
-                    && EF.Property<bool>(e, "IsDeleted") == false
-                );
+                    EF.Property<string>(e, "UserId") == userId);
+            }
+
+            if (typeof(T).GetProperty("IsDeleted") != null)
+            {
+                query = query.Where(e =>
+                    EF.Property<bool>(e, "IsDeleted") == false);
+            }
 
             return await query.FirstOrDefaultAsync(e => EF.Property<string>(e, "Id") == id);
         }
@@ -74,11 +82,18 @@ namespace Repo
             if (include != null)
                 query = include(query);
 
-            if (!string.IsNullOrEmpty(userId) && typeof(T).GetProperty("UserId") != null)
+            if (!string.IsNullOrEmpty(userId) &&
+                typeof(T).GetProperty("UserId") != null)
+            {
                 query = query.Where(e =>
-                    EF.Property<string>(e, "UserId") == userId
-                    && EF.Property<bool>(e, "IsDeleted") == false
-                );
+                    EF.Property<string>(e, "UserId") == userId);
+            }
+
+            if (typeof(T).GetProperty("IsDeleted") != null)
+            {
+                query = query.Where(e =>
+                    EF.Property<bool>(e, "IsDeleted") == false);
+            }
             if (typeof(T).GetProperty("CreatedAt") != null)
                 query = query.OrderByDescending(e => EF.Property<DateTime>(e, "CreatedAt"));
             return await query.Where(e => ids.Contains(EF.Property<string>(e, "Id"))).ToListAsync();
@@ -94,11 +109,18 @@ namespace Repo
             if (include != null)
                 query = include(query);
 
-            if (!string.IsNullOrEmpty(userId) && typeof(T).GetProperty("UserId") != null)
+            if (!string.IsNullOrEmpty(userId) &&
+                typeof(T).GetProperty("UserId") != null)
+            {
                 query = query.Where(e =>
-                    EF.Property<string>(e, "UserId") == userId
-                    && EF.Property<bool>(e, "IsDeleted") == false
-                );
+                    EF.Property<string>(e, "UserId") == userId);
+            }
+
+            if (typeof(T).GetProperty("IsDeleted") != null)
+            {
+                query = query.Where(e =>
+                    EF.Property<bool>(e, "IsDeleted") == false);
+            }
             if (typeof(T).GetProperty("CreatedAt") != null)
                 query = query.OrderByDescending(e => EF.Property<DateTime>(e, "CreatedAt"));
             return await query.ToListAsync();
@@ -113,12 +135,17 @@ namespace Repo
             if (include != null)
                 query = include(query);
 
-            if (!string.IsNullOrEmpty(userId) && typeof(T).GetProperty("UserId") != null)
+            if (!string.IsNullOrEmpty(userId) &&
+                typeof(T).GetProperty("UserId") != null)
             {
                 query = query.Where(e =>
-                    EF.Property<string>(e, "UserId") == userId
-                    && EF.Property<bool>(e, "IsDeleted") == false
-                );
+                    EF.Property<string>(e, "UserId") == userId);
+            }
+
+            if (typeof(T).GetProperty("IsDeleted") != null)
+            {
+                query = query.Where(e =>
+                    EF.Property<bool>(e, "IsDeleted") == false);
             }
             return await query.FirstOrDefaultAsync();
         }
@@ -163,6 +190,31 @@ namespace Repo
 
             return await query.FirstOrDefaultAsync(e => EF.Property<string>(e, "Slug") == slug);
         }
+       
+        public async Task<T?> GetSingleByPropertyAsync( Expression<Func<T, bool>> predicate, string? userId = null, Func<IQueryable<T>, IQueryable<T>> include = null)
+            {
+            IQueryable<T> query = _dbSet.AsQueryable();
+
+            if (include != null)
+                query = include(query);
+
+            if (!string.IsNullOrEmpty(userId) &&
+                typeof(T).GetProperty("UserId") != null)
+            {
+                query = query.Where(e =>
+                    EF.Property<string>(e, "UserId") == userId);
+            }
+
+            if (typeof(T).GetProperty("IsDeleted") != null)
+            {
+                query = query.Where(e =>
+                    EF.Property<bool>(e, "IsDeleted") == false);
+            }
+
+            return await query.FirstOrDefaultAsync(predicate);
+        }
+
+
 
         // ---------- Existence & Count ----------
 

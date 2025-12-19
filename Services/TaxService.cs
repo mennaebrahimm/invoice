@@ -70,7 +70,7 @@ namespace invoice.Services
             operation: async (context, state, cancellationToken) =>
             {
 
-              var transaction = await _taxRepo.BeginTransactionAsync();
+             await using var transaction = await _taxRepo.BeginTransactionAsync();
 
                     try
                     {
@@ -93,11 +93,13 @@ namespace invoice.Services
                     {
                         await _taxRepo.RollbackTransactionAsync(transaction);
 
-                        return new GeneralResponse<TaxReadDTO>(
-                            false,
-                            "Error updating tax: " + ex.Message
-                        );
-                    }
+                    //return new GeneralResponse<TaxReadDTO>(
+                    //    false,
+                    //    "Error updating tax: " + ex.Message
+                    //);
+                    throw new Exception("Error updating tax: " + ex.Message, ex);
+                    
+                }
                 },
 
                 verifySucceeded: null,

@@ -3,7 +3,7 @@
     public class CreateChargeDTO
     {
 
-        public string InvoiceId { get; set; } //v
+        public string InvoiceId { get; set; } 
 
     }
 

@@ -243,7 +243,7 @@ namespace invoice.Services
             var strategy = _invoiceRepo.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
-                var transaction = await _invoiceRepo.BeginTransactionAsync();
+                await using var transaction = await _invoiceRepo.BeginTransactionAsync();
 
                 try
                 {
@@ -340,12 +340,13 @@ namespace invoice.Services
                 catch (Exception ex)
                 {
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    return new GeneralResponse<object>
-                    {
-                        Success = false,
-                        Message = "Error creating order: " + ex.Message,
-                        Data = null
-                    };
+                    //return new GeneralResponse<object>
+                    //{
+                    //    Success = false,
+                    //    Message = "Error creating order: " + ex.Message,
+                    //    Data = null
+                    //};
+                    throw;
                 }
             }
             );

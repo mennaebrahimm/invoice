@@ -1,26 +1,21 @@
-﻿using invoice.Core.DTO;
+﻿using AutoMapper;
+using invoice.Core.DTO;
 using invoice.Core.DTO.Payment;
 using invoice.Core.DTO.PaymentResponse;
 using invoice.Core.DTO.PaymentResponse.TapPayments;
+using invoice.Core.DTO.Store;
 using invoice.Core.Entities;
 using invoice.Core.Enums;
 using invoice.Core.Interfaces.Services;
 using invoice.Helpers;
 using invoice.Repo;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Stripe;
-using Stripe.FinancialConnections;
-using Stripe.V2;
-using System;
-using System.Diagnostics.Metrics;
 using System.Net.Http.Headers;
-using System.Numerics;
 using System.Text;
 using System.Text.Json;
-using static invoice.Core.DTO.PaymentResponse.TapPayments.CreateLeadDto;
 
 
 
@@ -29,9 +24,12 @@ namespace invoice.Services.Payments.TabPayments
     public class TabPaymentsService : PaymentGatewayBase, IPaymentGateway
     {
         private readonly IInvoiceRepository _invoiceRepo;
+        private readonly IRepository<TapPaymentsPayout> _tapPaymentsPayoutRepo;
+        private readonly ILogger<TabPaymentsService> _logger;
         private readonly TabPaymentsOptions _options;
         private readonly HttpClient _httpClient;
         private readonly string _secretKey;
+        private readonly IMapper _mapper;
         private readonly IRepository<ApplicationUser> _ApplicationUserRepo;
 
 
@@ -40,15 +38,19 @@ namespace invoice.Services.Payments.TabPayments
         public TabPaymentsService(
            IRepository<ApplicationUser> ApplicationUserRepo,
             IConfiguration configuration,
+            ILogger<TabPaymentsService> logger,
             IOptions<TabPaymentsOptions> options,
             IHttpClientFactory httpClientFactory,
-            IInvoiceRepository invoiceRepo)
+             IMapper mapper,
+            IInvoiceRepository invoiceRepo, IRepository<TapPaymentsPayout> tapPaymentsPayoutRepo)
             : base(configuration)
         {
             _ApplicationUserRepo = ApplicationUserRepo;
-
             _options = options.Value;
             _invoiceRepo = invoiceRepo;
+            _logger = logger;
+            _mapper = mapper;
+            _tapPaymentsPayoutRepo = tapPaymentsPayoutRepo;
             _secretKey = configuration["TapSettings:SecretKey"];
 
 
@@ -71,7 +73,7 @@ namespace invoice.Services.Payments.TabPayments
 
         #region  Tap_Onboardin
 
-        public async Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDto dto, string userId)
+        public async Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDTO dto, string userId)
         {
             if (dto == null)
             {
@@ -201,9 +203,8 @@ namespace invoice.Services.Payments.TabPayments
 
 
 
-
         #endregion
-
+        
         #region create payment
         public async Task<GeneralResponse<string>> CreatePaymentAsync(CreateChargeDTO dto)
         {
@@ -312,8 +313,95 @@ namespace invoice.Services.Payments.TabPayments
                 );
             }
         }
-        #endregion
 
+
+        #endregion
+        #region Payout Webhook 
+        public async Task<GeneralResponse<object>> WebhookAsync(PayoutWebhookDTO dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Id))
+                return new GeneralResponse<object>(false, "dto or id not found");
+
+            var strategy = _tapPaymentsPayoutRepo.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction =
+                    await _tapPaymentsPayoutRepo.BeginTransactionAsync();
+
+                try
+                {
+                    var payout = await _tapPaymentsPayoutRepo
+                        .GetSingleByPropertyAsync(x => x.PayoutId == dto.Id);
+
+                    var alreadyCompleted = false;
+
+                    if (payout == null)
+                    {
+                        payout = _mapper.Map<TapPaymentsPayout>(dto);
+                        payout.CreatedAt = GetSaudiTime.Now();
+
+                        await _tapPaymentsPayoutRepo.AddAsync(payout);
+
+                        _logger.LogInformation(
+                            "Payout created: {PayoutId}", dto.Id);
+                    }
+                    else
+                    {
+                        if (payout.Status == "PAID_OUT")
+                        {
+                            alreadyCompleted = true;
+                        }
+                        else
+                        {
+                            _mapper.Map(dto, payout);
+                            payout.UpdatedAt = GetSaudiTime.Now();
+
+                            await _tapPaymentsPayoutRepo.UpdateAsync(payout);
+
+                            _logger.LogInformation(
+                                "Payout updated: {PayoutId}, Status: {Status}",
+                                dto.Id, dto.Status);
+                        }
+                    }
+
+                    if (!alreadyCompleted && dto.Status == "PAID_OUT")
+                    {
+                        var invoiceId = dto.Metadata?.GetValueOrDefault("invoiceid");
+
+                        if (!string.IsNullOrWhiteSpace(invoiceId))
+                        {
+                            var invoice = await _invoiceRepo.GetByIdAsync(invoiceId);
+
+                            if (invoice != null &&
+                                invoice.InvoiceStatus != InvoiceStatus.Paid)
+                            {
+                                invoice.InvoiceStatus = InvoiceStatus.Paid;
+                                await _invoiceRepo.UpdateAsync(invoice);
+                            }
+                        }
+                    }
+
+                    await _tapPaymentsPayoutRepo.CommitTransactionAsync(transaction);
+
+                    return alreadyCompleted
+                        ? new GeneralResponse<object>(true, "Payout already completed")
+                        : new GeneralResponse<object>(true, "Payout saved successfully");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+
+                    _logger.LogError(ex,
+                        "Error processing payout webhook. PayoutId: {PayoutId}",
+                        dto?.Id);
+
+                    throw; 
+                }
+            });
+        }
+
+        #endregion
 
         public override async Task<GeneralResponse<PaymentSessionResponse>> CreatePaymentSessionAsync(PaymentCreateDTO dto)
         {

@@ -1,19 +1,17 @@
 using System.Security.Claims;
 using System.Text;
+using Azure;
 using invoice.Core.DTO;
 using invoice.Core.DTO.Payment;
 using invoice.Core.DTO.PaymentResponse;
 using invoice.Core.DTO.PaymentResponse.TapPayments;
 using invoice.Core.Entities;
-using invoice.Core.Enums;
 using invoice.Core.Interfaces.Services;
-using invoice.Services;
-using invoice.Services.Payments.TabPayments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
-using static invoice.Core.DTO.PaymentResponse.TapPayments.CreateLeadDto;
+using static invoice.Core.DTO.PaymentResponse.TapPayments.CreateLeadDTO;
 
 namespace invoice.Controllers
 {
@@ -70,7 +68,7 @@ namespace invoice.Controllers
 
 
         [HttpPost("lead-to-connect")]
-        public async Task<IActionResult> LeadToConnect([FromBody] CreateLeadDto dto)
+        public async Task<IActionResult> LeadToConnect([FromBody] CreateLeadDTO dto)
         {
             var leadResponse = await _paymentGateway.CreateLeadRetailerAsync(dto, GetUserId());
 
@@ -148,32 +146,10 @@ namespace invoice.Controllers
 
         [AllowAnonymous]
         [HttpPost("createcharge-success")]
-        public async Task<IActionResult> CompleteCharge([FromQuery] string userId, [FromQuery] string accountId, [FromQuery] string status)
+        public async Task<IActionResult> CompleteCharge([FromBody] PayoutWebhookDTO dto)
         {
-            if (string.IsNullOrEmpty(accountId))
-                return BadRequest("Missing account id");
-
-            if (string.IsNullOrEmpty(userId))
-                return BadRequest("Missing user id");
-
-            if (status?.ToLower() != "success")
-            {
-                return BadRequest("Onboarding not successful");
-            }
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-                return NotFound("User not found");
-
-            user.TabAccountId = accountId;
-            await _userManager.UpdateAsync(user);
-
-            return Ok(new
-            {
-                message = "Onboarding success",
-                userId = userId,
-                tapAccountId = accountId
-            });
+            return Ok(await _paymentGateway.WebhookAsync(dto));
+         
         }
 
         #endregion

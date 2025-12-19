@@ -166,8 +166,10 @@ namespace invoice.Services
         {
             if (string.IsNullOrWhiteSpace(id))
                 return new GeneralResponse<bool> { Success = false, Message = "Payment link ID is required" };
-
-            var transaction = await _paymentLinkRepo.BeginTransactionAsync();
+            var strategy = _invoiceRepo.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+               await using var transaction = await _paymentLinkRepo.BeginTransactionAsync();
 
             try
             {
@@ -197,13 +199,15 @@ namespace invoice.Services
             catch (Exception ex)
             {
                 await _paymentLinkRepo.RollbackTransactionAsync(transaction);
-                return new GeneralResponse<bool>
-                {
-                    Success = false,
-                    Message = "Error deleting payment link: " + ex.Message,
-                    Data = false
-                };
-            }
+                    //return new GeneralResponse<bool>
+                    //{
+                    //    Success = false,
+                    //    Message = "Error deleting payment link: " + ex.Message,
+                    //    Data = false
+                    //};
+                    throw;
+                }
+            });
         }
 
         public async Task<GeneralResponse<bool>> DeleteRangeAsync(IEnumerable<string> ids, string userId)
@@ -335,7 +339,7 @@ namespace invoice.Services
             var strategy = _invoiceRepo.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
-                var transaction = await _invoiceRepo.BeginTransactionAsync();
+              await using  var transaction = await _invoiceRepo.BeginTransactionAsync();
 
                 try
                 {
@@ -419,12 +423,13 @@ namespace invoice.Services
                 {
 
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    return new GeneralResponse<object>
-                    {
-                        Success = false,
-                        Message = "Error creating payment: " + ex.Message,
-                        Data = null
-                    };
+                    //return new GeneralResponse<object>
+                    //{
+                    //    Success = false,
+                    //    Message = "Error creating payment: " + ex.Message,
+                    //    Data = null
+                    //};
+                    throw;
                 }
             });
         }

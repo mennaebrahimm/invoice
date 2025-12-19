@@ -75,32 +75,40 @@ namespace invoice.Services
 
         public async Task<GeneralResponse<bool>> DeleteAsync(string id, string userId)
         {
-            var transaction = await _productRepo.BeginTransactionAsync();
-            try
-            {
-                var product = await _productRepo.GetByIdAsync(id, userId);
-                if (product == null)
+
+
+                var strategy = _productRepo.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                   await using var transaction = await _productRepo.BeginTransactionAsync();
+           
+                try
+                {
+                    var product = await _productRepo.GetByIdAsync(id, userId);
+                    if (product == null)
+                    {
+                        await _productRepo.RollbackTransactionAsync(transaction);
+                        return new GeneralResponse<bool>(false, "Product not found", false);
+                    }
+
+                    product.DeletedAt = GetSaudiTime.Now();
+                    await _productRepo.UpdateAsync(product);
+
+                    var result = await _productRepo.DeleteAsync(product.Id);
+                    if (!result.Success)
+                        throw new Exception(result.Message);
+
+                    await _productRepo.CommitTransactionAsync(transaction);
+
+                    return new GeneralResponse<bool>(true, "Product deleted successfully", true);
+                }
+                catch (Exception ex)
                 {
                     await _productRepo.RollbackTransactionAsync(transaction);
-                    return new GeneralResponse<bool>(false, "Product not found", false);
+                        //return new GeneralResponse<bool>(false, "Error deleting product: " + ex.Message, false);
+                        throw;
                 }
-
-                product.DeletedAt = GetSaudiTime.Now();
-                await _productRepo.UpdateAsync(product);
-
-                var result = await _productRepo.DeleteAsync(product.Id);
-                if (!result.Success)
-                    throw new Exception(result.Message);
-
-                await _productRepo.CommitTransactionAsync(transaction);
-
-                return new GeneralResponse<bool>(true, "Product deleted successfully", true);
-            }
-            catch (Exception ex)
-            {
-                await _productRepo.RollbackTransactionAsync(transaction);
-                return new GeneralResponse<bool>(false, "Error deleting product: " + ex.Message, false);
-            }
+            });
         }
 
         public async Task<GeneralResponse<ProductWithInvoicesReadDTO>> GetByIdWithInvoicesAsync(string id, string userId)

@@ -37,5 +37,6 @@ namespace invoice.Core.Entities
         public PayInvoice? PayInvoice { get; set; }
         public List<Payment> Payments { get; set; } = new();
         public List<InvoiceItem>? InvoiceItems { get; set; } 
+        public TapPaymentsPayout? TapPaymentsPayout { get; set; } 
     }
 }

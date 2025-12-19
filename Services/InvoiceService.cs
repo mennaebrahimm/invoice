@@ -266,7 +266,7 @@ namespace invoice.Services
             var strategy = _invoiceRepo.CreateExecutionStrategy();
            return await strategy.ExecuteAsync(async () =>
             {
-                var transaction = await _invoiceRepo.BeginTransactionAsync();
+               await using var transaction = await _invoiceRepo.BeginTransactionAsync();
 
                 try
                 {
@@ -348,11 +348,12 @@ namespace invoice.Services
                 catch (Exception ex)
                 {
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    return new GeneralResponse<InvoiceReadDTO>
-                    {
-                        Success = false,
-                        Message = "Error creating invoice: " + ex.Message
-                    };
+                    //return new GeneralResponse<InvoiceReadDTO>
+                    //{
+                    //    Success = false,
+                    //    Message = "Error creating invoice: " + ex.Message
+                    //};
+                    throw;
                 }
             });
         } 
@@ -417,101 +418,106 @@ namespace invoice.Services
                     Message = $"Invoice with Id '{id}' not found."
                 };
 
-            var transaction = await _invoiceRepo.BeginTransactionAsync();
-
-            try
+            var strategy = _invoiceRepo.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                _mapper.Map(dto, invoice);
-                invoice.Value = 0;
-                if (string.IsNullOrWhiteSpace(dto.ClientId))
-                    invoice.ClientId = null;
-                invoice.UpdatedAt = GetSaudiTime.Now();
-                foreach (var oldItem in invoice.InvoiceItems.ToList())
+                 await using var transaction = await _invoiceRepo.BeginTransactionAsync();
+
+                try
                 {
-                    var product = await _ProductRepo.GetByIdAsync(oldItem.ProductId, userId);
-                    if (product?.Quantity != null)
+                    _mapper.Map(dto, invoice);
+                    invoice.Value = 0;
+                    if (string.IsNullOrWhiteSpace(dto.ClientId))
+                        invoice.ClientId = null;
+                    invoice.UpdatedAt = GetSaudiTime.Now();
+                    foreach (var oldItem in invoice.InvoiceItems.ToList())
                     {
-                        product.Quantity += oldItem.Quantity;
-                        await _ProductRepo.UpdateAsync(product);
-                    }
-
-                    await _invoiceItemRepo.DeleteAsync(oldItem.Id);
-                }
-
-                invoice.InvoiceItems.Clear();
-
-                if (dto.InvoiceItems != null && dto.InvoiceItems.Any())
-                {
-                    foreach (var itemDto in dto.InvoiceItems)
-                    {
-                        var product = await _ProductRepo.GetByIdAsync(itemDto.ProductId, userId);
-                        if (product == null)
-                            throw new Exception($"Product {itemDto.ProductId} not found");
-
-                        if (product.Quantity != null && product.Quantity < itemDto.Quantity)
-                            throw new Exception($"Product Quantity not Enough for {product.Name}");
-
-                        if (product.Quantity != null)
+                        var product = await _ProductRepo.GetByIdAsync(oldItem.ProductId, userId);
+                        if (product?.Quantity != null)
                         {
-                            product.Quantity -= itemDto.Quantity;
+                            product.Quantity += oldItem.Quantity;
                             await _ProductRepo.UpdateAsync(product);
                         }
 
-                        var newItem = new InvoiceItem
-                        {
-                            ProductId = product.Id,
-                            Quantity = itemDto.Quantity,
-                            UnitPrice = product.Price,
-                            InvoiceId = invoice.Id
-                        };
-
-                        await _invoiceItemRepo.AddAsync(newItem);
-
-                        invoice.Value += product.Price * itemDto.Quantity;
+                        await _invoiceItemRepo.DeleteAsync(oldItem.Id);
                     }
+
+                    invoice.InvoiceItems.Clear();
+
+                    if (dto.InvoiceItems != null && dto.InvoiceItems.Any())
+                    {
+                        foreach (var itemDto in dto.InvoiceItems)
+                        {
+                            var product = await _ProductRepo.GetByIdAsync(itemDto.ProductId, userId);
+                            if (product == null)
+                                throw new Exception($"Product {itemDto.ProductId} not found");
+
+                            if (product.Quantity != null && product.Quantity < itemDto.Quantity)
+                                throw new Exception($"Product Quantity not Enough for {product.Name}");
+
+                            if (product.Quantity != null)
+                            {
+                                product.Quantity -= itemDto.Quantity;
+                                await _ProductRepo.UpdateAsync(product);
+                            }
+
+                            var newItem = new InvoiceItem
+                            {
+                                ProductId = product.Id,
+                                Quantity = itemDto.Quantity,
+                                UnitPrice = product.Price,
+                                InvoiceId = invoice.Id
+                            };
+
+                            await _invoiceItemRepo.AddAsync(newItem);
+
+                            invoice.Value += product.Price * itemDto.Quantity;
+                        }
+                    }
+                    invoice.FinalValue = invoice.Value;
+                    if (dto.DiscountType == DiscountType.Amount)
+                    {
+                        invoice.FinalValue -= dto.DiscountValue ?? 0;
+                        invoice.DiscountType = DiscountType.Amount;
+                        invoice.DiscountValue = dto.DiscountValue;
+                    }
+                    else if (dto.DiscountType == DiscountType.Percentage)
+                    {
+                        invoice.FinalValue -= (invoice.Value * (dto.DiscountValue ?? 0) / 100);
+                        invoice.DiscountType = DiscountType.Percentage;
+                        invoice.DiscountValue = dto.DiscountValue;
+                    }
+
+                    if (invoice.FinalValue < 0) invoice.FinalValue = 0;
+
+                    if (dto.HaveTax && user.Tax?.Value > 0)
+                    {
+                        var taxRate = user.Tax.Value / 100m;
+                        invoice.FinalValue += invoice.FinalValue * taxRate;
+                    }
+
+                    await _invoiceRepo.UpdateAsync(invoice);
+
+                    await _invoiceRepo.CommitTransactionAsync(transaction);
+
+                    return new GeneralResponse<InvoiceReadDTO>
+                    {
+                        Success = true,
+                        Message = "Invoice updated successfully",
+                        Data = _mapper.Map<InvoiceReadDTO>(invoice)
+                    };
                 }
-                invoice.FinalValue = invoice.Value;
-                if (dto.DiscountType == DiscountType.Amount)
+                catch (Exception ex)
                 {
-                    invoice.FinalValue -= dto.DiscountValue ?? 0;
-                    invoice.DiscountType = DiscountType.Amount;
-                    invoice.DiscountValue = dto.DiscountValue;
+                    await _invoiceRepo.RollbackTransactionAsync(transaction);
+                    //return new GeneralResponse<InvoiceReadDTO>
+                    //{
+                    //    Success = false,
+                    //    Message = "Error updating invoice: " + ex.Message
+                    //};
+                    throw;
                 }
-                else if (dto.DiscountType == DiscountType.Percentage)
-                {
-                    invoice.FinalValue -= (invoice.Value * (dto.DiscountValue ?? 0) / 100);
-                    invoice.DiscountType = DiscountType.Percentage;
-                    invoice.DiscountValue = dto.DiscountValue;
-                }
-
-                if (invoice.FinalValue < 0) invoice.FinalValue = 0;
-
-                if (dto.HaveTax && user.Tax?.Value > 0)
-                {
-                    var taxRate = user.Tax.Value / 100m;
-                    invoice.FinalValue += invoice.FinalValue * taxRate;
-                }
-
-                await _invoiceRepo.UpdateAsync(invoice);
-
-                await _invoiceRepo.CommitTransactionAsync(transaction);
-
-                return new GeneralResponse<InvoiceReadDTO>
-                {
-                    Success = true,
-                    Message = "Invoice updated successfully",
-                    Data = _mapper.Map<InvoiceReadDTO>(invoice)
-                };
-            }
-            catch (Exception ex)
-            {
-                await _invoiceRepo.RollbackTransactionAsync(transaction);
-                return new GeneralResponse<InvoiceReadDTO>
-                {
-                    Success = false,
-                    Message = "Error updating invoice: " + ex.Message
-                };
-            }
+            });
         }
 
         public async Task<GeneralResponse<IEnumerable<InvoiceReadDTO>>> UpdateRangeAsync(IEnumerable<InvoiceUpdateDTO> dtos, string userId)
@@ -617,38 +623,43 @@ namespace invoice.Services
 
         public async Task<GeneralResponse<bool>> DeleteAsync(string id, string userId)
         {
-            var transaction = await _invoiceRepo.BeginTransactionAsync();
-            try
+            var strategy = _invoiceRepo.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                var invoice = await _invoiceRepo.GetByIdAsync(id, userId);
-
-                if (invoice == null)
-                    throw new Exception($"Invoice with Id '{id}' not found.");
-
-                invoice.DeletedAt = GetSaudiTime.Now();
-                await _invoiceRepo.UpdateAsync(invoice);
-
-                await _invoiceRepo.DeleteAsync(invoice.Id);
-
-                await _invoiceRepo.CommitTransactionAsync(transaction);
-
-                return new GeneralResponse<bool>
+               await using var transaction = await _invoiceRepo.BeginTransactionAsync();
+                try
                 {
-                    Success = true,
-                    Message = "Invoice deleted successfully.",
-                    Data = true
-                };
-            }
-            catch (Exception ex)
-            {
-                await _invoiceRepo.RollbackTransactionAsync(transaction);
-                return new GeneralResponse<bool>
+                    var invoice = await _invoiceRepo.GetByIdAsync(id, userId);
+
+                    if (invoice == null)
+                        throw new Exception($"Invoice with Id '{id}' not found.");
+
+                    invoice.DeletedAt = GetSaudiTime.Now();
+                    await _invoiceRepo.UpdateAsync(invoice);
+
+                    await _invoiceRepo.DeleteAsync(invoice.Id);
+
+                    await _invoiceRepo.CommitTransactionAsync(transaction);
+
+                    return new GeneralResponse<bool>
+                    {
+                        Success = true,
+                        Message = "Invoice deleted successfully.",
+                        Data = true
+                    };
+                }
+                catch (Exception ex)
                 {
-                    Success = false,
-                    Message = "Error deleting invoice: " + ex.Message,
-                    Data = false
-                };
-            }
+                    await _invoiceRepo.RollbackTransactionAsync(transaction);
+                    //return new GeneralResponse<bool>
+                    //{
+                    //    Success = false,
+                    //    Message = "Error deleting invoice: " + ex.Message,
+                    //    Data = false
+                    //};
+                    throw;
+                }
+            });
         }
 
         public async Task<GeneralResponse<bool>> RefundAsync(string id, string userId)
@@ -667,8 +678,11 @@ namespace invoice.Services
                     Data = false
                 };
             }
+            var strategy = _invoiceRepo.CreateExecutionStrategy();
 
-            var transaction = await _invoiceRepo.BeginTransactionAsync();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _invoiceRepo.BeginTransactionAsync();
 
             try
             {
@@ -703,18 +717,24 @@ namespace invoice.Services
             {
                 await _invoiceRepo.RollbackTransactionAsync(transaction);
 
-                return new GeneralResponse<bool>
-                {
-                    Success = false,
-                    Message = "Error refunding invoice: " + ex.Message,
-                    Data = false
-                };
-            }
+                //return new GeneralResponse<bool>
+                //{
+                //    Success = false,
+                //    Message = "Error refunding invoice: " + ex.Message,
+                //    Data = false
+                //};
+                throw;
+                }
+            });
         }
 
         public async Task<GeneralResponse<bool>> PayAsync(string id, string userId, PayInvoiceCreateDTO dto = null)
         {
-            var transaction = await _invoiceRepo.BeginTransactionAsync();
+            var strategy = _invoiceRepo.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using   var transaction = await _invoiceRepo.BeginTransactionAsync();
             try
             {
                 var invoice = await _invoiceRepo.GetByIdAsync(id, userId);
@@ -745,13 +765,15 @@ namespace invoice.Services
             catch (Exception ex)
             {
                 await _invoiceRepo.RollbackTransactionAsync(transaction);
-                return new GeneralResponse<bool>
-                {
-                    Success = false,
-                    Message = "Error paying invoice: " + ex.Message,
-                    Data = false
-                };
-            }
+                //return new GeneralResponse<bool>
+                //{
+                //    Success = false,
+                //    Message = "Error paying invoice: " + ex.Message,
+                //    Data = false
+                //};
+                throw;
+                }
+            });
         }
         public async Task<GeneralResponse<bool>> ChangeOrderStatus(string id, ChangeOrderStatusDTO dto, string userId)
         {
