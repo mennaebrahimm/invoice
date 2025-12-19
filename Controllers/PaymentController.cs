@@ -38,61 +38,22 @@ namespace invoice.Controllers
 
         }
 
-      
 
         private string GetUserId() =>
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         #region Tap_Onboarding
 
-        //[HttpPost("create-merchant")]
-        //public async Task<IActionResult> CreateMerchant([FromBody] TapUserDto dto)
-        //{
-        //    if (!ModelState.IsValid)
-        //        return BadRequest(ModelState);
-
-
-        //    try
-        //    {
-        //        var redirectUrl = await _paymentGateway.CreateMerchantAccountAsync(dto, GetUserId());
-
-        //        if (string.IsNullOrEmpty(redirectUrl))
-        //            return BadRequest(new { message = "Failed to create merchant" });
-
-        //        return Ok(new { redirectUrl });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { error = ex.Message });
-        //    }
-        //}
-
-
         [HttpPost("lead-to-connect")]
         public async Task<IActionResult> LeadToConnect([FromBody] CreateLeadDTO dto)
         {
-            var leadResponse = await _paymentGateway.CreateLeadRetailerAsync(dto, GetUserId());
 
-            if (!leadResponse.Success || string.IsNullOrEmpty(leadResponse.Data))
-            {
-                return BadRequest("Failed to create lead: " + leadResponse.Message);
-            }
+            return Ok( await _paymentGateway.CreateLeadRetailerAsync(dto, GetUserId()));
 
-            var leadId = leadResponse.Data;
-
-            var connectUrl = await _paymentGateway.CreateAccountRetailerAsync(leadId, GetUserId());
-
-            if (connectUrl == null)
-                return BadRequest("Lead created, but failed to create connect URL");
-
-            return Ok(new
-            {
-                leadId,
-                connectUrl
-            });
+           
         }
 
             [AllowAnonymous]
-        [HttpPost("onboarding-success")]
+        [HttpPost("onboarding-webhook")]
         public async Task<IActionResult> OnboardingSuccess([FromQuery] string userId, [FromQuery] string accountId, [FromQuery] string status)
         {
             if (string.IsNullOrEmpty(accountId))
@@ -145,7 +106,7 @@ namespace invoice.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost("createcharge-success")]
+        [HttpPost("payout-webhook")]
         public async Task<IActionResult> CompleteCharge([FromBody] PayoutWebhookDTO dto)
         {
             return Ok(await _paymentGateway.WebhookAsync(dto));

@@ -16,7 +16,7 @@ namespace invoice.Core.DTO.PaymentResponse.TapPayments
     public class BrandDto
     {
         public List<LocalizedTextDto> Name { get; set; }
-        public string Logo { get; set; }  //file
+        public IFormFile Logo { get; set; }  //file
         public List<ChannelServiceDto> Channel_Services { get; set; }
     }
 

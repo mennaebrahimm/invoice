@@ -9,13 +9,14 @@ using invoice.Core.Enums;
 using invoice.Core.Interfaces.Services;
 using invoice.Helpers;
 using invoice.Repo;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Stripe;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 
 
 
@@ -25,10 +26,13 @@ namespace invoice.Services.Payments.TabPayments
     {
         private readonly IInvoiceRepository _invoiceRepo;
         private readonly IRepository<TapPaymentsPayout> _tapPaymentsPayoutRepo;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<TabPaymentsService> _logger;
         private readonly TabPaymentsOptions _options;
         private readonly HttpClient _httpClient;
         private readonly string _secretKey;
+        private readonly string _MarketplaceId;
+        private readonly string _Domain;
         private readonly IMapper _mapper;
         private readonly IRepository<ApplicationUser> _ApplicationUserRepo;
 
@@ -41,17 +45,20 @@ namespace invoice.Services.Payments.TabPayments
             ILogger<TabPaymentsService> logger,
             IOptions<TabPaymentsOptions> options,
             IHttpClientFactory httpClientFactory,
-             IMapper mapper,
-            IInvoiceRepository invoiceRepo, IRepository<TapPaymentsPayout> tapPaymentsPayoutRepo)
+            IMapper mapper,
+            IInvoiceRepository invoiceRepo, UserManager<ApplicationUser> userManager, IRepository<TapPaymentsPayout> tapPaymentsPayoutRepo)
             : base(configuration)
         {
             _ApplicationUserRepo = ApplicationUserRepo;
             _options = options.Value;
             _invoiceRepo = invoiceRepo;
+            _userManager = userManager;
             _logger = logger;
             _mapper = mapper;
             _tapPaymentsPayoutRepo = tapPaymentsPayoutRepo;
             _secretKey = configuration["TapSettings:SecretKey"];
+            _MarketplaceId = configuration["TapSettings:MarketplaceId"];
+            _Domain = configuration["AppSettings:BaseUrl"];
 
 
             if (string.IsNullOrWhiteSpace(_options.BaseUrl))
@@ -73,48 +80,74 @@ namespace invoice.Services.Payments.TabPayments
 
         #region  Tap_Onboardin
 
-        public async Task<GeneralResponse<string>> CreateLeadRetailerAsync(CreateLeadDTO dto, string userId)
+        public async Task<GeneralResponse<object>> CreateLeadRetailerAsync(CreateLeadDTO dto, string userId)
         {
             if (dto == null)
             {
-                return  new GeneralResponse<string>(false, "Invalid request: user data is required", null);
+                return  new GeneralResponse<object>(false, "Invalid request: user data is required", null);
             }
             var user = await _ApplicationUserRepo.GetByIdAsync(userId);
-
+            if (user == null)
+            {
+                return new GeneralResponse<object>(false, "User not found", null);
+            }
             if (user.TabAccountId != null)
             {
-                return new GeneralResponse<string>(false, "Invalid request: user already have account on tap payments", null);
+                return new GeneralResponse<object>(false, "Invalid request: user already have account on tap payments", null);
 
             }
+            var filedto = new CreateFileDTO
+            {
+                Purpose = "brand_logo",
+                Title = dto.Brand.Logo.FileName,
+                ExpiresAt = DateTime.UtcNow.AddYears(1),
+                FileLinkCreate = true,
+                File = dto.Brand.Logo
+
+            };
+            var fileResult = await CreateFileAsync(filedto);
+            if (!fileResult.Success)
+            {
+                return new GeneralResponse<object>(false, "Failed to upload logo file");
+            }
+            var fileId = fileResult.Data?.ToString();
             var body = new {
-                segment =new
+                segment = new
                 {
-                    type= "BUSINESS",
-                    sub_segment =new {
-                        type= "RETAILER"
+                    type = "BUSINESS",
+                    sub_segment = new {
+                        type = "RETAILER"
 
                     }
                 },
-                country=dto.Country,
-                brand = dto.Brand,
+                country = dto.Country,
+
+                brand= new
+                {
+                    name = dto.Brand.Name,
+                    logo = fileId,
+                    channel=dto.Brand.Channel_Services
+                },
                 entity = dto.Entity,
                 users = dto.Users,
                 wallet = dto.Wallet,
                 marketplace = new {
-                    id= "67989550"
+                    id= _MarketplaceId
                 },
                 post = new {
-                    url= ""
+                    url = $"{_Domain}/api/Payments/onboarding-webhook"
                 },
 
             };
+          
+
             try
             {
                 var response = await _httpClient.PostAsJsonAsync("/v3/lead", body);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return new GeneralResponse<string>(
+                    return new GeneralResponse<object>(
                         false,
                         $"Failed to create lead. Status code: {response.StatusCode}",null
                     );
@@ -122,26 +155,25 @@ namespace invoice.Services.Payments.TabPayments
 
                 var json = await response.Content.ReadFromJsonAsync<JsonElement>();
                 var leadId = json.GetProperty("id").GetString();
-
-                return new GeneralResponse<string>(
-                    true,
-                    "Lead created successfully", leadId
-                );
+                if (string.IsNullOrEmpty(leadId))
+                {
+                    return new GeneralResponse<object>(false, "Lead ID not returned from Tap", null);
+                }
+                return (await CreateAccountRetailerAsync(leadId, userId));
             }
             catch (Exception ex)
             {
-                return new GeneralResponse<string>(
-                    false,
-                    $"Error: {ex.Message}",null
-                );
+                _logger.LogError(ex, "Error while creating Tap retailer for user {UserId}", userId);
+                return new GeneralResponse<object>(false, "Unexpected error occurred", null);
             }
         }
-        public async Task<string?> CreateAccountRetailerAsync(string leadId, string userId)
+
+        public async Task<GeneralResponse<object>> CreateAccountRetailerAsync(string leadId ,string userId)
         {
 
             var body = new
             {
-                lead_id = "leadId"
+                lead_id = leadId
 
             };
            
@@ -149,24 +181,80 @@ namespace invoice.Services.Payments.TabPayments
 
 
             if (!response.IsSuccessStatusCode)
-                return null;
-            //var raw = await response.Content.ReadAsStringAsync();
-            //Console.WriteLine("RAW TAP RESPONSE: " + raw);
+                return new GeneralResponse<object>(false, $"failed to create Account Retailer:{response.StatusCode}");
+        
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var retailerid = json.GetProperty("retailer").GetProperty("id").GetString();
+            if (string.IsNullOrEmpty(retailerid))
+            {
+                return new GeneralResponse<object>(false, "Retailer ID not returned from Tap");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return new GeneralResponse<object>(false, "user not found");
+            user.TabAccountId = retailerid;
+            await _userManager.UpdateAsync(user);
+            return   new GeneralResponse<object>(true, "TabAccount Id saved successfully");
+
+
+        }
+        public async Task<GeneralResponse<object>> CreateFileAsync(CreateFileDTO dto)
+        {
+            if (dto?.File == null || dto.File.Length == 0)
+                return new GeneralResponse<object>(false, "File is required");
+
+            using var content = new MultipartFormDataContent();
+
+            content.Add(new StringContent(dto.Purpose), "purpose");
+            content.Add(new StringContent(dto.Title), "title");
+
+            var expiresAtUnix =
+                new DateTimeOffset(dto.ExpiresAt).ToUnixTimeSeconds();
+            content.Add(new StringContent(expiresAtUnix.ToString()), "expires_at");
+
+            content.Add(
+                new StringContent(dto.FileLinkCreate.ToString().ToLower()),
+                "file_link_create"
+            );
+
+            using var stream = dto.File.OpenReadStream();
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(dto.File.ContentType);
+
+            content.Add(fileContent, "identity_document", dto.File.FileName);
+
+            var response = await _httpClient.PostAsync("/v2/files/", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                return new GeneralResponse<object>(
+                    false, $"failed to create file: {error}");
+            }
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-            return json.GetProperty("connect").GetProperty("url").GetString(); // connect_onboarding URL
+            var fileId = json.GetProperty("id").GetString();
+
+            if (string.IsNullOrEmpty(fileId))
+                return new GeneralResponse<object>(
+                    false, "file ID not returned from Tap");
+
+            return new GeneralResponse<object>(
+                true, "file created successfully", fileId);
         }
+
 
         //public async Task<string?> CreateConnectUrlAsync(string leadId ,string userId)
         //{
 
         //    var dto = new CreateConnectDto
         //    { 
-               
+
         //        Lead = new LeadRefDto { Id = leadId },
         //        Redirect = new RedirectDto { Url = "https://yourwebsite.com/success" },
         //        Post = new PostDto { Url  = $"https://myinvoice.runasp.net/api/Payments/onboarding-success?userid={userId}",
-                
+
         //        }
         //    };
         //    //var dto = new
@@ -188,9 +276,9 @@ namespace invoice.Services.Payments.TabPayments
         //    //        url = "https://myinvoice.runasp.net"
         //    //    }
         //    //};
-        
+
         //    var response = await _httpClient.PostAsJsonAsync("/v3/connect", dto);
-          
+
 
         //    if (!response.IsSuccessStatusCode)
         //        return null;
@@ -204,7 +292,7 @@ namespace invoice.Services.Payments.TabPayments
 
 
         #endregion
-        
+
         #region create payment
         public async Task<GeneralResponse<string>> CreatePaymentAsync(CreateChargeDTO dto)
         {
@@ -279,7 +367,7 @@ namespace invoice.Services.Payments.TabPayments
                 },
                 post = new
                 {
-                    url = "https://myinvoice.runasp.net/api/Payments/createcharge-success",
+                    url = $"{_Domain}/api/Payments/payout-webhook",
 
                 },
 
