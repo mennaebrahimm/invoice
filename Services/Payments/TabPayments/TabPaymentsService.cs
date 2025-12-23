@@ -98,7 +98,7 @@ namespace invoice.Services.Payments.TabPayments
             }
             var filedto = new CreateFileDTO
             {
-                Purpose = "brand_logo",
+                Purpose = "business_logo",
                 Title = dto.Brand.Logo.FileName,
                 ExpiresAt = DateTime.UtcNow.AddYears(1),
                 FileLinkCreate = true,
@@ -108,7 +108,7 @@ namespace invoice.Services.Payments.TabPayments
             var fileResult = await CreateFileAsync(filedto);
             if (!fileResult.Success)
             {
-                return new GeneralResponse<object>(false, "Failed to upload logo file");
+                return new GeneralResponse<object>(false, $"Failed to upload logo file {fileResult.Message}");
             }
             var fileId = fileResult.Data?.ToString();
             var body = new {
@@ -143,13 +143,14 @@ namespace invoice.Services.Payments.TabPayments
 
             try
             {
+
                 var response = await _httpClient.PostAsJsonAsync("/v3/lead", body);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     return new GeneralResponse<object>(
                         false,
-                        $"Failed to create lead. Status code: {response.StatusCode}",null
+                        $"Failed to create lead. Status code: {response.RequestMessage}",null
                     );
                 }
 
@@ -222,7 +223,7 @@ namespace invoice.Services.Payments.TabPayments
             fileContent.Headers.ContentType =
                 new System.Net.Http.Headers.MediaTypeHeaderValue(dto.File.ContentType);
 
-            content.Add(fileContent, "identity_document", dto.File.FileName);
+            content.Add(fileContent, "file", dto.File.FileName);
 
             var response = await _httpClient.PostAsync("/v2/files/", content);
 

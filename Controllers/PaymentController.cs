@@ -43,15 +43,12 @@ namespace invoice.Controllers
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         #region Tap_Onboarding
 
-        [HttpPost("lead-to-connect")]
-        public async Task<IActionResult> LeadToConnect([FromBody] CreateLeadDTO dto)
-        {
+        [HttpPost("leadretailer")]
+        public async Task<IActionResult> LeadToConnect([FromForm] CreateLeadDTO dto)
+        {  return Ok( await _paymentGateway.CreateLeadRetailerAsync(dto, GetUserId()));
 
-            return Ok( await _paymentGateway.CreateLeadRetailerAsync(dto, GetUserId()));
-
-           
         }
-
+        
             [AllowAnonymous]
         [HttpPost("onboarding-webhook")]
         public async Task<IActionResult> OnboardingSuccess([FromQuery] string userId, [FromQuery] string accountId, [FromQuery] string status)
