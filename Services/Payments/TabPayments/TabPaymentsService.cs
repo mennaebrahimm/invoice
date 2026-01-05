@@ -3,7 +3,6 @@ using invoice.Core.DTO;
 using invoice.Core.DTO.Payment;
 using invoice.Core.DTO.PaymentResponse;
 using invoice.Core.DTO.PaymentResponse.TapPayments;
-using invoice.Core.DTO.Store;
 using invoice.Core.Entities;
 using invoice.Core.Enums;
 using invoice.Core.Interfaces.Services;
@@ -14,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
+using System.Numerics;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -59,7 +59,7 @@ namespace invoice.Services.Payments.TabPayments
             _secretKey = configuration["TapSettings:SecretKey"];
             _MarketplaceId = configuration["TapSettings:MarketplaceId"];
             _Domain = configuration["AppSettings:BaseUrl"];
-
+            
 
             if (string.IsNullOrWhiteSpace(_options.BaseUrl))
                 _options.BaseUrl = "https://api.tap.company";
@@ -96,76 +96,157 @@ namespace invoice.Services.Payments.TabPayments
                 return new GeneralResponse<object>(false, "Invalid request: user already have account on tap payments", null);
 
             }
-            var filedto = new CreateFileDTO
-            {
-                Purpose = "business_logo",
-                Title = dto.Brand.Logo.FileName,
-                ExpiresAt = DateTime.UtcNow.AddYears(1),
-                FileLinkCreate = true,
-                File = dto.Brand.Logo
+            //var filedto = new CreateFileDTO
+            //{
+            //    Purpose = "business_logo",
+            //    Title = dto.Brand.Logo.FileName,
+            //    ExpiresAt = DateTime.UtcNow.AddYears(1),
+            //    FileLinkCreate = true,
+            //    File = dto.Brand.Logo
 
-            };
-            var fileResult = await CreateFileAsync(filedto);
-            if (!fileResult.Success)
+            //};
+            //var fileResult = await CreateFileAsync(filedto);
+            //if (!fileResult.Success)
+            //{
+            //    return new GeneralResponse<object>(false, $"Failed to upload logo file {fileResult.Message}");
+            //}
+            //var fileId = fileResult.Data?.ToString();
+            ////var body = new {
+            //    segment = new
+            //    {
+            //        type = "BUSINESS",
+            //        sub_segment = new {
+            //            type = "RETAILER"
+
+            //        }
+            //    },
+            //    country = dto.Country,
+
+            //    brand= new
+            //    {
+            //        name = dto.Brand.Name,
+            //        //logo = fileId,
+            //        logo = "file_FfhH825923SeVG25kS11b243",
+            //        channel=dto.Brand.Channel_Services
+            //    },
+            //    entity = dto.Entity,
+            //    users = dto.Users,
+            //    wallet = dto.Wallet,
+            //    marketplace = new {
+            //        id= _MarketplaceId
+            //    },
+            //    post = new {
+            //        url = $"{_Domain}/api/Payments/onboarding-webhook"
+            //    },
+
+            //};
+            var requestBody = new 
             {
-                return new GeneralResponse<object>(false, $"Failed to upload logo file {fileResult.Message}");
-            }
-            var fileId = fileResult.Data?.ToString();
-            var body = new {
                 segment = new
                 {
                     type = "BUSINESS",
-                    sub_segment = new {
+                    sub_segment = new
+                    {
                         type = "RETAILER"
 
                     }
                 },
-                country = dto.Country,
+                country = dto.country,
 
-                brand= new
+                brand = new 
                 {
-                    name = dto.Brand.Name,
-                    logo = fileId,
-                    channel=dto.Brand.Channel_Services
+                    name = dto.brand.name,
+                    logo = "file_SnT71325710rfos29W611a274",
+                    channel_services = dto.brand.channel_services
+
+
                 },
-                entity = dto.Entity,
-                users = dto.Users,
-                wallet = dto.Wallet,
-                marketplace = new {
-                    id= _MarketplaceId
+
+                entity = new Entity
+                {
+                    legal_name = dto.entity.legal_name,
+
+                    license = dto.entity.license,
                 },
-                post = new {
+                users = dto.users.Select(u => new User
+                {
+                    name = u.name,
+                    identification = u.identification,
+                    primary = u.primary,
+                    Contact = new ContactDto
+                    {
+                        Email = u.Contact?.Email,
+                        Phone = u.Contact?.Phone
+                    }
+                }).ToList(),
+
+
+                wallet = new Wallet
+                {
+                    name = dto.wallet.name,
+
+                    linked_financial_account = dto.wallet.linked_financial_account,
+                },
+                marketplace = new
+                {
+                    id = _MarketplaceId
+                },
+                post = new
+                {
                     url = $"{_Domain}/api/Payments/onboarding-webhook"
                 },
-
             };
-          
+
+
 
             try
             {
 
-                var response = await _httpClient.PostAsJsonAsync("/v3/lead", body);
+                var response = await _httpClient.PostAsJsonAsync("/v3/lead", requestBody);
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+
+                    _logger.LogError("Failed to create lead. Status code: {StatusCode}. Error details: {ErrorContent}", response.StatusCode, errorContent);
                     return new GeneralResponse<object>(
                         false,
-                        $"Failed to create lead. Status code: {response.RequestMessage}",null
-                    );
+                        $"Failed to create lead. Status code: {response.StatusCode}. Error details: {errorContent}",
+                        null);
+
+
                 }
+                var responseBody = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Response Body: " + responseBody);
 
                 var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-                var leadId = json.GetProperty("id").GetString();
-                if (string.IsNullOrEmpty(leadId))
+
+           
+                if (json.TryGetProperty("id", out var leadId))
                 {
+                    string leadIdValue = leadId.GetString();
+                    if (string.IsNullOrEmpty(leadIdValue))
+                    {
+                        _logger.LogWarning("Lead ID is empty.");
+                        return new GeneralResponse<object>(false, "Lead ID is empty.", null);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Lead ID: {LeadId}", leadIdValue);
+                   
+                        return await CreateAccountRetailerAsync(leadIdValue, userId);
+                    }
+                }
+                else
+                {
+                    _logger.LogError("The 'id' key was not found in the response.");
                     return new GeneralResponse<object>(false, "Lead ID not returned from Tap", null);
                 }
-                return (await CreateAccountRetailerAsync(leadId, userId));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while creating Tap retailer for user {UserId}", userId);
-                return new GeneralResponse<object>(false, "Unexpected error occurred", null);
+                return new GeneralResponse<object>(false, $"Error while creating Tap retailer for user {userId}", ex.Message);
             }
         }
 
@@ -183,7 +264,8 @@ namespace invoice.Services.Payments.TabPayments
 
             if (!response.IsSuccessStatusCode)
                 return new GeneralResponse<object>(false, $"failed to create Account Retailer:{response.StatusCode}");
-        
+            var responseBody = await response.Content.ReadAsStringAsync();
+            Console.WriteLine("Response Body: " + responseBody);
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
             var retailerid = json.GetProperty("retailer").GetProperty("id").GetString();
             if (string.IsNullOrEmpty(retailerid))
