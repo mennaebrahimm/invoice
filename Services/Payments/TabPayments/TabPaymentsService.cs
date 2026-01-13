@@ -261,10 +261,11 @@ namespace invoice.Services.Payments.TabPayments
            
             var response = await _httpClient.PostAsJsonAsync("/v3/connect/account", body);
 
-
             if (!response.IsSuccessStatusCode)
                 return new GeneralResponse<object>(false, $"failed to create Account Retailer:{response.StatusCode}");
             var responseBody = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("Response Body: " + responseBody);
+
             Console.WriteLine("Response Body: " + responseBody);
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
             var retailerid = json.GetProperty("retailer").GetProperty("id").GetString();

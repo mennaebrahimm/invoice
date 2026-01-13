@@ -49,7 +49,7 @@ namespace invoice.Controllers
 
         }
         
-            [AllowAnonymous]
+         [AllowAnonymous]
         [HttpPost("onboarding-webhook")]
         public async Task<IActionResult> OnboardingSuccess([FromQuery] string userId, [FromQuery] string accountId, [FromQuery] string status)
         {
