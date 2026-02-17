@@ -17,7 +17,6 @@ namespace invoice.Core.Interfaces.Services
         Task<object> CreateAccountRetailerAsync(string leadId, string userId);
 
         Task<string?> CreateConnectUrlAsync(string leadId, string userId);
-        Task<GeneralResponse<string>> CreateLeadAsync(CreateLeadDTO dto, string userId);  //x
         Task<GeneralResponse<string>> CreatePaymentAsync(CreateChargeDTO dto);
         Task<GeneralResponse<object>> WebhookAsync(PayoutWebhookDTO dto);
 

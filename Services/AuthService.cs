@@ -282,7 +282,7 @@ namespace invoice.Services
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
                //expires: DateTime.Now.AddMinutes(15),  //GetSaudiTime.Now()
-                  expires: DateTime.Now.AddDays(7),
+                expires: DateTime.Now.AddDays(3),
                 signingCredentials: creds
             );
 

@@ -209,22 +209,24 @@ namespace invoice
                 builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[]
                 {
                     "http://localhost:7290",
-                    "https://localhost:7290",
+                    "https://rahtk.sa",
                 };
 
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy(
-                    "AllowSpecificOrigins",
-                    policy =>
-                    {
-                        policy
-                            .WithOrigins(allowedOrigins)
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
-                            .AllowCredentials();
-                    }
-                );
+                //-->> we have external api
+
+                //options.AddPolicy(
+                //    "AllowSpecificOrigins",
+                //    policy =>
+                //    {
+                //        policy
+                //            .WithOrigins(allowedOrigins)
+                //            .AllowAnyMethod()
+                //            .AllowAnyHeader()
+                //            .AllowCredentials();
+                //    }
+                //);
 
                 options.AddPolicy(
                     "AllowAll",

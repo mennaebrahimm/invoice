@@ -133,10 +133,7 @@ namespace invoice.Services.Payments
             throw new NotImplementedException();
         }
 
-        public Task<GeneralResponse<string>> CreateLeadAsync(CreateLeadDTO dto, string userId)  //x
-        {
-            throw new NotImplementedException();
-        }
+       
 
         public Task<GeneralResponse<object>> WebhookAsync(PayoutWebhookDTO dto)
         {

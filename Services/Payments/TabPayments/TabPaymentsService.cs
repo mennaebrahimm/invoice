@@ -13,10 +13,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
-using System.Numerics;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
 
 
 
@@ -96,50 +94,22 @@ namespace invoice.Services.Payments.TabPayments
                 return new GeneralResponse<object>(false, "Invalid request: user already have account on tap payments", null);
 
             }
-            //var filedto = new CreateFileDTO
-            //{
-            //    Purpose = "business_logo",
-            //    Title = dto.Brand.Logo.FileName,
-            //    ExpiresAt = DateTime.UtcNow.AddYears(1),
-            //    FileLinkCreate = true,
-            //    File = dto.Brand.Logo
+            var filedto = new CreateFileDTO
+            {
+                Purpose = "business_logo",
+                Title = dto.brand.logo.FileName,
+                ExpiresAt = DateTime.UtcNow.AddYears(1),
+                FileLinkCreate = true,
+                File = dto.brand.logo
 
-            //};
-            //var fileResult = await CreateFileAsync(filedto);
-            //if (!fileResult.Success)
-            //{
-            //    return new GeneralResponse<object>(false, $"Failed to upload logo file {fileResult.Message}");
-            //}
-            //var fileId = fileResult.Data?.ToString();
-            ////var body = new {
-            //    segment = new
-            //    {
-            //        type = "BUSINESS",
-            //        sub_segment = new {
-            //            type = "RETAILER"
-
-            //        }
-            //    },
-            //    country = dto.Country,
-
-            //    brand= new
-            //    {
-            //        name = dto.Brand.Name,
-            //        //logo = fileId,
-            //        logo = "file_FfhH825923SeVG25kS11b243",
-            //        channel=dto.Brand.Channel_Services
-            //    },
-            //    entity = dto.Entity,
-            //    users = dto.Users,
-            //    wallet = dto.Wallet,
-            //    marketplace = new {
-            //        id= _MarketplaceId
-            //    },
-            //    post = new {
-            //        url = $"{_Domain}/api/Payments/onboarding-webhook"
-            //    },
-
-            //};
+            };
+            var fileResult = await CreateFileAsync(filedto);
+            if (!fileResult.Success)
+            {
+                return new GeneralResponse<object>(false, $"Failed to upload logo file {fileResult.Message}");
+            }
+            var fileId = fileResult.Data?.ToString();
+     
             var requestBody = new 
             {
                 segment = new
@@ -156,7 +126,9 @@ namespace invoice.Services.Payments.TabPayments
                 brand = new 
                 {
                     name = dto.brand.name,
-                    logo = "file_SnT71325710rfos29W611a274",
+                    //logo = "file_SnT71325710rfos29W611a274",   // for testing
+                    logo = fileId,
+
                     channel_services = dto.brand.channel_services
 
 
@@ -398,7 +370,7 @@ namespace invoice.Services.Payments.TabPayments
                 return new GeneralResponse<string>(false, "Invalid request: invalid invoice id", null);
 
             }
-            if (string.IsNullOrWhiteSpace(invoice.User.TabAccountId))
+            if (string.IsNullOrEmpty(invoice.User.TabAccountId))
             {
                 return new GeneralResponse<string>(
                     false, "Merchant Tap account is not configured", null);
@@ -419,16 +391,18 @@ namespace invoice.Services.Payments.TabPayments
                 {
                     invoiceid = invoice.Id
                 },
-               
+
                 destinations = new
-                { destination = new[] {
+                {
+                    destination = new[] {
                     new {
                             id = invoice.User.TabAccountId, 
+                           // id = "67989550",   //for testing
                             amount = merchantAmount,
                             currency = invoice.Currency
                         }
                     }
-                        },
+                },
                 receipt = new
                 {
                     email=true,
@@ -441,10 +415,11 @@ namespace invoice.Services.Payments.TabPayments
                     //phone = invoice.Client.PhoneNumber,
 
                 },
-                //merchant = new
-                //{
-                //    id = invoice.User.TabAccountId
-                //},
+                merchant = new
+                {
+                    id = _MarketplaceId,
+
+                },
                 source = new
                 {
                     id = "src_all"
@@ -457,8 +432,8 @@ namespace invoice.Services.Payments.TabPayments
 
             redirect = new
                 {
-                    url = "https://myinvoice.runasp.net"
-                },
+                    url = $"{_Domain}/PaymentSuccess"
+            },
                
 
             };
@@ -469,16 +444,50 @@ namespace invoice.Services.Payments.TabPayments
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var response = await _httpClient.PostAsync("https://api.tap.company/v2/charges", content);
                 var result = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation(
+             "Tap response received. StatusCode: {StatusCode}, Body: {ResponseBody}",
+             response.StatusCode,
+             result
+                 );
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError(
+                        "Tap payment failed. InvoiceId: {InvoiceId}, Response: {ResponseBody}",
+                        invoice.Id,
+                        result
+                    );
+
+                    return new GeneralResponse<string>(
+                        false,
+                        "Failed to create payment",
+                        null
+                    );
+                }
+
                 var charge = JsonConvert.DeserializeObject<dynamic>(result);
                 string redirectUrl = charge?.transaction?.url;
 
+                _logger.LogInformation(
+                    "Payment created successfully. InvoiceId: {InvoiceId}, RedirectUrl: {RedirectUrl}",
+                    invoice.Id,
+                    redirectUrl
+                );
+
                 return new GeneralResponse<string>(
                     true,
-                    "redirect Url created successfully", redirectUrl
+                    "redirect Url created successfully",
+                    redirectUrl
                 );
+            
             }
             catch (Exception ex)
             {
+                _logger.LogError(
+            ex,
+            "Exception occurred while creating payment. InvoiceId: {InvoiceId}",
+            dto.InvoiceId);
                 return new GeneralResponse<string>(
                     false,
                     $"Error: {ex.Message}", null

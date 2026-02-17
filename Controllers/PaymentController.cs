@@ -10,8 +10,6 @@ using invoice.Core.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Stripe;
-using static invoice.Core.DTO.PaymentResponse.TapPayments.CreateLeadDTO;
 
 namespace invoice.Controllers
 {
@@ -96,8 +94,7 @@ namespace invoice.Controllers
             var chargeUrl = Response.Data;
        
             return Ok(new
-            {
-                 
+            {  
                 chargeUrl
             });
         }
