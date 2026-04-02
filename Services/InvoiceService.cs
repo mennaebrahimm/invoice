@@ -109,46 +109,44 @@ namespace invoice.Services
 
         public async Task<GeneralResponse<InvoiceReadDTO>> GetByIdAsync(string id, string userId)
         {
-            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(userId))
-                return new GeneralResponse<InvoiceReadDTO> { Success = false, Message = "Id and UserId are required." };
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(userId))
+                    return new GeneralResponse<InvoiceReadDTO> { Success = false, Message = "Id and UserId are required." };
 
-            var invoice = await _invoiceRepo.GetByIdAsync(id, userId, q => q
-                .Include(x => x.Client)
-                .Include(x => x.InvoiceItems).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
-                .Include(x => x.PayInvoice).ThenInclude(p => p.PaymentMethod)
-                .Include(x => x.User)
-                .Include(x => x.PaymentLinkPayment).ThenInclude(p => p.PaymentLink)
-                .Include(x => x.Payments)
-                .Include(x => x.Language)
-                .Include(x => x.Order)
-                .Include(x => x.Tax)
-                .IgnoreQueryFilters()
-
+                var invoice = await _invoiceRepo.GetByIdAsync(id, userId, q => q
+                    .Include(x => x.Client)
+                    .Include(x => x.InvoiceItems).ThenInclude(i => i.Product).ThenInclude(p => p.Category)
+                    .Include(x => x.PayInvoice).ThenInclude(p => p.PaymentMethod)
+                    .Include(x => x.User)
+                    .Include(x => x.PaymentLinkPayment).ThenInclude(p => p.PaymentLink)
+                    .Include(x => x.Payments)
+                    .Include(x => x.Language)
+                    .Include(x => x.Order)
+                    .Include(x => x.Tax)
+                    .IgnoreQueryFilters()
                 );
 
-            if (invoice == null)
-            {
-                return new GeneralResponse<InvoiceReadDTO> { Success = false, Message = "invalid invoice id." };
+                if (invoice == null)
+                    return new GeneralResponse<InvoiceReadDTO> { Success = false, Message = "invalid invoice id." };
 
-            }
+                var dto = _mapper.Map<InvoiceReadDTO>(invoice);
 
-            var dto = _mapper.Map<InvoiceReadDTO>(invoice);
-            if (dto.TaxInfo == null)
-            {
-                dto.TaxInfo = new TaxReadDTO
+                return new GeneralResponse<InvoiceReadDTO>
                 {
-                    TaxName = invoice.Tax?.TaxName,
-                    TaxNumber = invoice.Tax?.TaxNumber,
-                    Value = invoice.Tax?.Value ?? 0
+                    Success = true,
+                    Message = "Invoice retrieved successfully.",
+                    Data = dto
                 };
             }
-
-            return new GeneralResponse<InvoiceReadDTO>
+            catch (Exception ex)
             {
-                Success = true,
-                Message = "Invoice retrieved successfully.",
-                Data = dto
-            };
+                return new GeneralResponse<InvoiceReadDTO>
+                {
+                    Success = false,
+                    Message = "Error retrieving invoice: " + ex.Message
+                };
+            }
         }
         public async Task<GeneralResponse<InvoicewithUserDTO>> GetByIdWithUserAsync(string id)
         {
@@ -272,13 +270,15 @@ namespace invoice.Services
                 {
                     var user = await _ApplicationUserRepo.GetByIdAsync(userId, include: q => q.Include(u => u.Tax)
                     .Include(u=>u.Currency));
+                    if (user == null)
+                        return new GeneralResponse<InvoiceReadDTO> { Success = false, Message = "User not found in the system." };
 
                     var invoice = _mapper.Map<Invoice>(dto);
                     invoice.UserId = userId;
-                    invoice.Code = $"INV-{DateTime.UtcNow.Ticks}";
+                    invoice.Code = $"INV-{Guid.NewGuid().ToString().Substring(0, 4)}";
                     invoice.InvoiceStatus = InvoiceStatus.Active;
                     invoice.Value = 0;
-                    invoice.Currency = user.Currency.CurrencyCode;
+                    invoice.Currency = (user.Currency == null) ? "SAR" : user.Currency.CurrencyCode;
                     invoice.InvoiceItems = new List<InvoiceItem>();
 
 
@@ -348,17 +348,17 @@ namespace invoice.Services
                 catch (Exception ex)
                 {
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    //return new GeneralResponse<InvoiceReadDTO>
-                    //{
-                    //    Success = false,
-                    //    Message = "Error creating invoice: " + ex.Message
-                    //};
+                    return new GeneralResponse<InvoiceReadDTO>
+                    {
+                        Success = false,
+                        Message = "Error creating invoice: " + ex.Message
+                    };
                     throw;
                 }
             });
         } 
 
-            public async Task<GeneralResponse<IEnumerable<InvoiceReadDTO>>> CreateRangeAsync(IEnumerable<InvoiceCreateDTO> dtos, string userId)
+        public async Task<GeneralResponse<IEnumerable<InvoiceReadDTO>>> CreateRangeAsync(IEnumerable<InvoiceCreateDTO> dtos, string userId)
         {
             if (dtos == null || !dtos.Any() || string.IsNullOrWhiteSpace(userId))
                 return new GeneralResponse<IEnumerable<InvoiceReadDTO>> { Success = false, Message = "Invoice data and UserId are required.", Data = Enumerable.Empty<InvoiceReadDTO>() };
@@ -510,11 +510,11 @@ namespace invoice.Services
                 catch (Exception ex)
                 {
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    //return new GeneralResponse<InvoiceReadDTO>
-                    //{
-                    //    Success = false,
-                    //    Message = "Error updating invoice: " + ex.Message
-                    //};
+                    return new GeneralResponse<InvoiceReadDTO>
+                    {
+                        Success = false,
+                        Message = "Error updating invoice: " + ex.Message
+                    };
                     throw;
                 }
             });
@@ -765,13 +765,13 @@ namespace invoice.Services
             catch (Exception ex)
             {
                 await _invoiceRepo.RollbackTransactionAsync(transaction);
-                //return new GeneralResponse<bool>
-                //{
-                //    Success = false,
-                //    Message = "Error paying invoice: " + ex.Message,
-                //    Data = false
-                //};
-                throw;
+                    return new GeneralResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Error paying invoice: " + ex.Message,
+                        Data = false
+                    };
+                    throw;
                 }
             });
         }
@@ -894,26 +894,29 @@ namespace invoice.Services
 
         public async Task<GeneralResponse<POSInvoicesResultDTO>> GetForPOSAsync(InvoiceType type, string userId)
         {
-            var today = DateTime.Today;
+
+            //var today = DateTime.Today.Date;
+            var today = GetSaudiTime.Now().Date;
             var tomorrow = today.AddDays(1);
+            var invoices = await _invoiceRepo.QueryAsync(i =>
+                    i.UserId == userId &&
+                    i.InvoiceType == type &&
+                    i.CreatedAt >= today &&
+                    i.CreatedAt < tomorrow,
+                      q => q.Include(i => i.Client));
 
-            var invoices = await _invoiceRepo.GetAllAsync(userId, x => x.Client);
-            
-            var filtered = invoices.Where(i => i.InvoiceType == type
-            && (i.CreatedAt >= today && i.CreatedAt < tomorrow)
-            );
 
-            var totalValue = filtered.Sum(i => i.FinalValue);
+            var totalValue = invoices.Sum(i => i.FinalValue);
             var result = new POSInvoicesResultDTO
             {
-                Invoices = _mapper.Map<IEnumerable<GetAllInvoiceDTO>>(filtered),
+                Invoices = _mapper.Map<IEnumerable<GetAllInvoiceDTO>>(invoices),
                 TotalValue = totalValue
             };
 
             return new GeneralResponse<POSInvoicesResultDTO>
             {
-                Success = filtered.Any(),
-                Message = filtered.Any() ? "Invoices retrieved." : "No invoices found for this type.",
+                Success = invoices.Any(),
+                Message = invoices.Any() ? "Invoices retrieved." : "No invoices found for this type.",
                 Data = result
             };
         }

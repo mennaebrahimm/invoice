@@ -49,6 +49,13 @@ namespace invoice.Core.Enums
         CreditCard = 13,
 
         [EnumMember(Value = "delivery")]
-        Delivery = 14
+        Delivery = 14,
+        [EnumMember(Value = "network")]
+        Network = 15,
+        [EnumMember(Value = "card")]
+        Card = 16,
+        [EnumMember(Value = "other")]
+        Other = 17,
+
     }
 }

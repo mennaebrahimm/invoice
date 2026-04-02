@@ -12,8 +12,8 @@ using invoice.Repo.Data;
 namespace invoice.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251028231331_updatetax2")]
-    partial class updatetax2
+    [Migration("20260306014928_update-tax")]
+    partial class updatetax
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -166,6 +166,10 @@ namespace invoice.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("ApiKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -214,6 +218,9 @@ namespace invoice.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("SecurityStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TabAccountId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("TwoFactorEnabled")
@@ -396,6 +403,10 @@ namespace invoice.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
@@ -549,7 +560,7 @@ namespace invoice.Migrations
                         new
                         {
                             Id = "ar",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(3887),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5114),
                             IsDeleted = false,
                             Name = "Arabic",
                             Target = "Page"
@@ -557,7 +568,7 @@ namespace invoice.Migrations
                         new
                         {
                             Id = "en",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(3949),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5183),
                             IsDeleted = false,
                             Name = "English",
                             Target = "Page"
@@ -1035,84 +1046,98 @@ namespace invoice.Migrations
                         new
                         {
                             Id = "ca",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4262),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5856),
                             IsDeleted = false,
                             Name = "Cash"
                         },
                         new
                         {
                             Id = "cc",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4293),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5915),
                             IsDeleted = false,
                             Name = "CreditCard"
                         },
                         new
                         {
                             Id = "dc",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4303),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5937),
                             IsDeleted = false,
                             Name = "DebitCard"
                         },
                         new
                         {
                             Id = "bt",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4312),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5957),
                             IsDeleted = false,
                             Name = "BankTransfer"
                         },
                         new
                         {
                             Id = "pp",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4342),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(5975),
                             IsDeleted = false,
                             Name = "PayPal"
                         },
                         new
                         {
                             Id = "st",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4352),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6014),
                             IsDeleted = false,
                             Name = "Stripe"
                         },
                         new
                         {
+                            Id = "tp",
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6027),
+                            IsDeleted = false,
+                            Name = "TabPayments"
+                        },
+                        new
+                        {
                             Id = "ap",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4360),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6061),
                             IsDeleted = false,
                             Name = "ApplePay"
                         },
                         new
                         {
                             Id = "gp",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4369),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6074),
                             IsDeleted = false,
                             Name = "GooglePay"
                         },
                         new
                         {
+                            Id = "ed",
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6086),
+                            IsDeleted = false,
+                            Name = "Edfa"
+                        },
+                        new
+                        {
                             Id = "ma",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4378),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6104),
                             IsDeleted = false,
                             Name = "Mada"
                         },
                         new
                         {
                             Id = "sp",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4386),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6123),
                             IsDeleted = false,
                             Name = "STCPay"
                         },
                         new
                         {
                             Id = "sa",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4395),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6158),
                             IsDeleted = false,
                             Name = "Sadad"
                         },
                         new
                         {
                             Id = "dl",
-                            CreatedAt = new DateTime(2025, 10, 29, 2, 13, 30, 167, DateTimeKind.Unspecified).AddTicks(4404),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 49, 26, 488, DateTimeKind.Unspecified).AddTicks(6209),
                             IsDeleted = false,
                             Name = "Delivery"
                         });
@@ -1248,10 +1273,91 @@ namespace invoice.Migrations
                     b.ToTable("Stores", (string)null);
                 });
 
+            modelBuilder.Entity("invoice.Core.Entities.TapPaymentsPayout", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BankCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BankId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BankName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BeneficiaryIban")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BeneficiaryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvoiceId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MerchantId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("PayoutDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PayoutId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SwiftCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WalletCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WalletId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId")
+                        .IsUnique();
+
+                    b.ToTable("TapPaymentsPayout");
+                });
+
             modelBuilder.Entity("invoice.Core.Entities.Tax", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CommercialRegisterNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1259,8 +1365,16 @@ namespace invoice.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("FreelanceDocumentNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("LicenseNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TaxName")
                         .IsRequired()
@@ -1339,6 +1453,43 @@ namespace invoice.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("invoice.Core.Entities.ApplicationUser", b =>
+                {
+                    b.OwnsMany("invoice.Core.Entities.RefreshToken", "RefreshTokens", b1 =>
+                        {
+                            b1.Property<string>("ApplicationUserId")
+                                .HasColumnType("nvarchar(450)");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<DateTime>("CreateOn")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<DateTime>("Expration")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<DateTime?>("RevokedOn")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<string>("Token")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.HasKey("ApplicationUserId", "Id");
+
+                            b1.ToTable("RefreshToken");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ApplicationUserId");
+                        });
+
+                    b.Navigation("RefreshTokens");
+                });
+
             modelBuilder.Entity("invoice.Core.Entities.Category", b =>
                 {
                     b.HasOne("invoice.Core.Entities.ApplicationUser", "User")
@@ -1387,7 +1538,8 @@ namespace invoice.Migrations
 
                     b.HasOne("invoice.Core.Entities.Tax", "Tax")
                         .WithMany("Invoices")
-                        .HasForeignKey("TaxId");
+                        .HasForeignKey("TaxId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("invoice.Core.Entities.ApplicationUser", "User")
                         .WithMany("Invoices")
@@ -1859,6 +2011,17 @@ namespace invoice.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("invoice.Core.Entities.TapPaymentsPayout", b =>
+                {
+                    b.HasOne("invoice.Core.Entities.Invoice", "Invoice")
+                        .WithOne("TapPaymentsPayout")
+                        .HasForeignKey("invoice.Core.Entities.TapPaymentsPayout", "InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+                });
+
             modelBuilder.Entity("invoice.Core.Entities.Tax", b =>
                 {
                     b.HasOne("invoice.Core.Entities.ApplicationUser", "User")
@@ -1917,6 +2080,8 @@ namespace invoice.Migrations
                     b.Navigation("PaymentLinkPayment");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("TapPaymentsPayout");
                 });
 
             modelBuilder.Entity("invoice.Core.Entities.Language", b =>

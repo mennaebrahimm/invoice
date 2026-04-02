@@ -70,7 +70,10 @@ namespace invoice.Repo.Data
                     new PaymentMethod { Id = "ma", Name = PaymentType.Mada },
                     new PaymentMethod { Id = "sp", Name = PaymentType.STCPay },
                     new PaymentMethod { Id = "sa", Name = PaymentType.Sadad },
-                    new PaymentMethod { Id = "dl", Name = PaymentType.Delivery }
+                    new PaymentMethod { Id = "dl", Name = PaymentType.Delivery } ,
+                    new PaymentMethod { Id = "cd", Name = PaymentType.Card },
+                    new PaymentMethod { Id = "ne", Name = PaymentType.Network },
+                    new PaymentMethod { Id = "ot", Name = PaymentType.Other }
                 );
 
             builder.Entity<Store>(store =>

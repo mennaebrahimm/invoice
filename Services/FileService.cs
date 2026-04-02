@@ -64,7 +64,12 @@ namespace invoice.Services
             var baseUrl = _configuration["AppSettings:BaseUrl"] ?? _configuration["BaseUrl"] ?? "http://localhost";
             baseUrl = baseUrl.TrimEnd('/');
 
-            var relative = imagePath.TrimStart('~', '/');
+            var relative = imagePath.TrimStart('~', '/'); 
+            // rahtk.sa sting only
+            if (!relative.StartsWith("webapp/wwwroot/"))
+            {
+                relative = "webapp/wwwroot/" + relative;
+            }
             return $"{baseUrl}/{relative}";
         }
 

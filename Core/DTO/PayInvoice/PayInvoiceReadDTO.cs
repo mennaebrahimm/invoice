@@ -5,6 +5,7 @@
         public DateTime PaidAt { get; set; }
 
         public string PaymentMethodId { get; set; }
-       
+        public string PaymentMethodName { get; set; }
+
     }
 }

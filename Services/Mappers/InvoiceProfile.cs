@@ -26,7 +26,6 @@ namespace invoice.Services.Mappers
              //   .ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments))
                 ;
 
-            //CreateMap<Tax, TaxReadDTO>();
 
 
             CreateMap<Invoice, InvoicewithUserDTO>()

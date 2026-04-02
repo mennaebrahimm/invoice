@@ -27,7 +27,7 @@ namespace Repo
         )
         {
             IQueryable<T> query = _dbSet;
-
+            query = query.IgnoreQueryFilters();
             if (includes != null && includes.Any())
                 query = includes.Aggregate(query, (current, include) => current.Include(include));
 

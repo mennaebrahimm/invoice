@@ -240,7 +240,7 @@ namespace invoice.Services
                 return new GeneralResponse<PaymentLinkReadDTO> { Success = false, Message = "Payment link ID is required" };
 
             var entity = await _paymentLinkRepo.GetByIdAsync(id, userId, q =>q
-            .Include(i =>i.PaymentLinkPayments).ThenInclude(l => l.Invoice)
+            .Include(i =>i.PaymentLinkPayments).ThenInclude(l => l.Invoice).ThenInclude(i=>i.Client)
                 
                 );
             if (entity == null)
@@ -358,30 +358,30 @@ namespace invoice.Services
 
                     // client
                     string ClientId;
-                    var EmailExists = await _clientRepo.ExistsAsync(c => c.Email == dto.Client.Email && c.UserId == userId);
-                    if (EmailExists)
-                    {
-                        var client = (await _clientRepo.QueryAsync(c => c.UserId == userId && c.Email == dto.Client.Email && !c.IsDeleted)).First();
-                        _mapper.Map(dto.Client, client);
-                        var result = await _clientRepo.UpdateAsync(client);
-                        ClientId = result.Data.Id;
-                    }
-                    else
-                    {
+                    //var EmailExists = await _clientRepo.ExistsAsync(c => c.Email == dto.Client.Email && c.UserId == userId);
+                    //if (EmailExists)
+                    //{
+                    //    var client = (await _clientRepo.QueryAsync(c => c.UserId == userId && c.Email == dto.Client.Email && !c.IsDeleted)).First();
+                    //    _mapper.Map(dto.Client, client);
+                    //    var result = await _clientRepo.UpdateAsync(client);
+                    //    ClientId = result.Data.Id;
+                    //}
+                    //else
+                    //{
                         var entity = _mapper.Map<Client>(dto.Client);
                         entity.UserId = userId;
                         var result = await _clientRepo.AddAsync(entity);
                         if (!result.Success) throw new Exception(result.Message);
                         ClientId = result.Data.Id;
-                    }
+                    //}
 
                     // invoice
                     var invoice = new Invoice
                     {
                         UserId = userId,
                         ClientId = ClientId,
-                        Code = $"INV-{DateTime.UtcNow.Ticks}",
-                        InvoiceStatus = InvoiceStatus.Paid,
+                        Code = $"INV-{Guid.NewGuid().ToString().Substring(0, 4)}",
+                        InvoiceStatus = InvoiceStatus.Active,
                         InvoiceType = InvoiceType.PaymentLink,
                         Value = paymentlink.Value * dto.PaymentsNumber,
                         FinalValue = paymentlink.Value * dto.PaymentsNumber,
@@ -423,12 +423,12 @@ namespace invoice.Services
                 {
 
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    //return new GeneralResponse<object>
-                    //{
-                    //    Success = false,
-                    //    Message = "Error creating payment: " + ex.Message,
-                    //    Data = null
-                    //};
+                    return new GeneralResponse<object>
+                    {
+                        Success = false,
+                        Message = "Error creating payment: " + ex.Message,
+                        Data = null
+                    };
                     throw;
                 }
             });

@@ -4,9 +4,26 @@ namespace invoice.Core.DTO.Custom_Validation
 {
     public class ValidImageAttribute: ValidationAttribute
     {
-        private readonly string[] _allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
-        private readonly string[] _allowedContentTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/bmp" };
+         private readonly string[] _allowedExtensions = new[]
+                                        {
+                                            ".jpg",
+                                            ".jpeg",
+                                            ".jfif",
+                                            ".png",
+                                            ".webp",
+                                            ".gif",
+                                            ".bmp"
+                                        };
 
+        private readonly string[] _allowedContentTypes = new[]
+        {
+                                            "image/jpeg",
+                                            "image/jpg",
+                                            "image/png",
+                                            "image/webp",
+                                            "image/gif",
+                                            "image/bmp"
+                                        };
         protected override ValidationResult IsValid(object value, ValidationContext validationContext)
         {
             var file = value as IFormFile;

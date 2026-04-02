@@ -11,7 +11,6 @@ using invoice.Helpers;
 using invoice.Models.Entities.utils;
 using invoice.Repo;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using System.Linq.Expressions;
 
 namespace invoice.Services
@@ -193,6 +192,9 @@ namespace invoice.Services
                 return new GeneralResponse<StoreReadDTO>(false, "Store not found");
 
             var user = await _ApplicationUserRepo.GetByIdAsync(userId);
+            var oldLogoPath = entity.StoreSettings.Logo;
+            var oldCoverPath = entity.StoreSettings.CoverImage;
+            _mapper.Map(dto, entity);
 
             if (dto.StoreSettings.Logo != null)
             {
@@ -201,6 +203,10 @@ namespace invoice.Services
                     entity.StoreSettings.Logo,
                     "stores"
                 );
+            }
+            else
+            {
+                entity.StoreSettings.Logo = oldLogoPath;
             }
 
             if (dto.StoreSettings.CoverImage != null)
@@ -211,8 +217,11 @@ namespace invoice.Services
                     "stores"
                 );
             }
+            else
+            {
+                entity.StoreSettings.CoverImage = oldCoverPath;
+            }
 
-            _mapper.Map(dto, entity);
             var exists = await _storeRepo.GetBySlugAsync(dto.Slug);
             if (exists != null && exists.Id != entity.Id)
             {
@@ -247,32 +256,33 @@ namespace invoice.Services
 
                 try
                 {
-                    var user = await _ApplicationUserRepo.GetByIdAsync(userId, null, q => q.Include(u => u.Store));
+                    var user = await _ApplicationUserRepo.GetByIdAsync(userId, null, q => q.Include(u => u.Store)
+                    .Include(u=>u.Tax));
 
                     // client
                     string ClientId;
-                    var EmailExists = await _clientRepo.ExistsAsync(c => c.Email == dto.Client.Email && c.UserId == userId);
-                    if (EmailExists)
-                    {
-                        var client = (await _clientRepo.QueryAsync(c => c.UserId == userId && c.Email == dto.Client.Email && !c.IsDeleted)).First();
-                        _mapper.Map(dto.Client, client);
-                        var result = await _clientRepo.UpdateAsync(client);
-                        ClientId = result.Data.Id;
-                    }
-                    else
-                    {
+                    //var EmailExists = await _clientRepo.ExistsAsync(c => c.Email == dto.Client.Email && c.UserId == userId);
+                    //if (EmailExists)
+                    //{
+                    //    var client = (await _clientRepo.QueryAsync(c => c.UserId == userId && c.Email == dto.Client.Email && !c.IsDeleted)).First();
+                    //    _mapper.Map(dto.Client, client);
+                    //    var result = await _clientRepo.UpdateAsync(client);
+                    //    ClientId = result.Data.Id;
+                    //}
+                    //else
+                    //{
                         var entity = _mapper.Map<Client>(dto.Client);
                         entity.UserId = userId;
                         var result = await _clientRepo.AddAsync(entity);
                         if (!result.Success) throw new Exception(result.Message);
                         ClientId = result.Data.Id;
-                    }
+                    //}
 
                     // invoice
                     var invoice = _mapper.Map<Invoice>(dto.Invoice);
                     invoice.UserId = userId;
                     invoice.ClientId = ClientId;
-                    invoice.Code = $"INV-{DateTime.UtcNow.Ticks}";
+                    invoice.Code = $"INV-{Guid.NewGuid().ToString().Substring(0, 4)}";
                     invoice.InvoiceStatus = InvoiceStatus.Active;
                     invoice.InvoiceType = InvoiceType.Online;
                     invoice.Value = 0;
@@ -316,7 +326,7 @@ namespace invoice.Services
                         invoice.HaveTax = true;
                         invoice.TaxId = user.Tax.Id;
                     }
-
+                   
                     invoice.Order = _mapper.Map<Order>(dto);
                     invoice.Order.InvoiceId = invoice.Id;
                     invoice.Order.OrderStatus = OrderStatus.Delivered;
@@ -340,12 +350,12 @@ namespace invoice.Services
                 catch (Exception ex)
                 {
                     await _invoiceRepo.RollbackTransactionAsync(transaction);
-                    //return new GeneralResponse<object>
-                    //{
-                    //    Success = false,
-                    //    Message = "Error creating order: " + ex.Message,
-                    //    Data = null
-                    //};
+                    return new GeneralResponse<object>
+                    {
+                        Success = false,
+                        Message = "Error creating order: " + ex.Message,
+                        Data = null
+                    };
                     throw;
                 }
             }

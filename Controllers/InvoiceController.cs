@@ -104,17 +104,24 @@ namespace invoice.Controllers
 
 
         [HttpPost("CreateByPOS")]
-        public async Task<IActionResult> CreateByPOS([FromBody] InvoiceCreateDTO dto)
+        public async Task<IActionResult> CreateByPOS([FromBody] CreateInvoiceByPOSDTO dto )
         {
-            var response = await _invoiceService.CreateAsync(dto, GetUserId());
+            var response = await _invoiceService.CreateAsync(dto.Invoice, GetUserId());
             if (response?.Data != null)
             {
-                var response2 = await _invoiceService.PayAsync(response.Data.Id, GetUserId());
+                var response2 = await _invoiceService.PayAsync(response.Data.Id, GetUserId(),dto.Payment);
                 var response3 = await _invoiceService.GetByIdAsync(response.Data.Id, GetUserId());
                 return Ok(response3);
 
 
             }
+            return Ok(response);
+        }
+
+        [HttpPut("pay/{id}")]
+        public async Task<IActionResult> Pay(string id, [FromBody] PayInvoiceCreateDTO dto)
+        {
+            var response = await _invoiceService.PayAsync(id, GetUserId(), dto);
             return Ok(response);
         }
 
@@ -132,12 +139,7 @@ namespace invoice.Controllers
             return Ok(response);
         }
 
-        [HttpPut("pay/{id}")]
-        public async Task<IActionResult> Pay(string id, [FromBody] PayInvoiceCreateDTO dto)
-        {
-            var response = await _invoiceService.PayAsync(id, GetUserId(), dto);
-            return Ok(response);
-        }
+      
 
         [HttpPut("Refund/{id}")]
         public async Task<IActionResult> Refund(string id)

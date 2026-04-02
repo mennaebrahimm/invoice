@@ -557,7 +557,7 @@ namespace invoice.Migrations
                         new
                         {
                             Id = "ar",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(2733),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(509),
                             IsDeleted = false,
                             Name = "Arabic",
                             Target = "Page"
@@ -565,7 +565,7 @@ namespace invoice.Migrations
                         new
                         {
                             Id = "en",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(2792),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(586),
                             IsDeleted = false,
                             Name = "English",
                             Target = "Page"
@@ -1043,98 +1043,98 @@ namespace invoice.Migrations
                         new
                         {
                             Id = "ca",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3317),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1257),
                             IsDeleted = false,
                             Name = "Cash"
                         },
                         new
                         {
                             Id = "cc",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3368),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1312),
                             IsDeleted = false,
                             Name = "CreditCard"
                         },
                         new
                         {
                             Id = "dc",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3384),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1331),
                             IsDeleted = false,
                             Name = "DebitCard"
                         },
                         new
                         {
                             Id = "bt",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3486),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1349),
                             IsDeleted = false,
                             Name = "BankTransfer"
                         },
                         new
                         {
                             Id = "pp",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3511),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1377),
                             IsDeleted = false,
                             Name = "PayPal"
                         },
                         new
                         {
                             Id = "st",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3528),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1397),
                             IsDeleted = false,
                             Name = "Stripe"
                         },
                         new
                         {
                             Id = "tp",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3544),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1528),
                             IsDeleted = false,
                             Name = "TabPayments"
                         },
                         new
                         {
                             Id = "ap",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3560),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1550),
                             IsDeleted = false,
                             Name = "ApplePay"
                         },
                         new
                         {
                             Id = "gp",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3576),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1569),
                             IsDeleted = false,
                             Name = "GooglePay"
                         },
                         new
                         {
                             Id = "ed",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3592),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1587),
                             IsDeleted = false,
                             Name = "Edfa"
                         },
                         new
                         {
                             Id = "ma",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3608),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1606),
                             IsDeleted = false,
                             Name = "Mada"
                         },
                         new
                         {
                             Id = "sp",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3629),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1624),
                             IsDeleted = false,
                             Name = "STCPay"
                         },
                         new
                         {
                             Id = "sa",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3651),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1656),
                             IsDeleted = false,
                             Name = "Sadad"
                         },
                         new
                         {
                             Id = "dl",
-                            CreatedAt = new DateTime(2025, 12, 19, 4, 53, 20, 336, DateTimeKind.Unspecified).AddTicks(3684),
+                            CreatedAt = new DateTime(2026, 3, 6, 4, 53, 37, 487, DateTimeKind.Unspecified).AddTicks(1698),
                             IsDeleted = false,
                             Name = "Delivery"
                         });
@@ -1352,21 +1352,29 @@ namespace invoice.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("CommercialRegisterNumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("FreelanceDocumentNumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("LicenseNumber")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TaxName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TaxNumber")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
